@@ -11,6 +11,18 @@
 #ifndef ENCODER_H
 #define ENCODER_H
 
+#include <Arduino.h>
+
+typedef uint8_t encoder_event_t;
+enum {
+  ENCODER_EVENT_NONE,
+  ENCODER_EVENT_LEFT,
+  ENCODER_EVENT_RIGHT,
+  ENCODER_EVENT_BTN,
+};
+
+encoder_event_t encoder_event_get(void);
+
 void ISR_encoder_CLK(void);
 
 void ISR_encoder_DT(void);

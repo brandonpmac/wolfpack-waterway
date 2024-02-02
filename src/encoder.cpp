@@ -10,6 +10,7 @@
 
 #include <Arduino.h>
 
+#include "encoder.h"
 #include "pins.h"
 
 // a fall on dt while clk is high followed by a fall on clk while dt is low is a
@@ -20,6 +21,14 @@
 static bool CLK = false;
 static bool DT = false;
 
+static encoder_event_t my_encoder_event = ENCODER_EVENT_NONE;
+
+encoder_event_t encoder_event_get(void){
+  encoder_event_t encoder_event = my_encoder_event;
+  my_encoder_event = ENCODER_EVENT_NONE;
+  return encoder_event;
+}
+
 void ISR_encoder_CLK(void) {
   if (digitalRead(ENCODER_DT) == HIGH) {
     CLK = true;
@@ -28,7 +37,7 @@ void ISR_encoder_CLK(void) {
   if (DT && digitalRead(ENCODER_DT) == LOW) {
     DT = false;
     CLK = false;
-    Serial.println("Left turn");
+    my_encoder_event = ENCODER_EVENT_LEFT;
   }
 }
 
@@ -40,6 +49,6 @@ void ISR_encoder_DT(void) {
   if (CLK && digitalRead(ENCODER_CLK) == LOW) {
     DT = false;
     CLK = false;
-    Serial.println("Right turn");
+    my_encoder_event = ENCODER_EVENT_RIGHT;
   }
 }
