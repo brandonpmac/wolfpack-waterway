@@ -27,8 +27,7 @@ static int pump_trigger_off = 90;
 static int pump_trigger_on = 120;
 static int single_pump = -1;
 
-void control_task(void) {
-
+void switch_check(void) {
   // checking the max limit switch
   if (digitalRead(SW_LIMIT_MAX) == LOW) {
     limit_max = true;
@@ -48,7 +47,11 @@ void control_task(void) {
   } else {
     run_control = false;
   }
+}
 
+void control_task(void) {
+
+  switch_check();
   // single pump logic
   if ((single_pump == -1) && ((tunnel_setpoint < pump_trigger_off))) {
     single_pump = random(0, 2);
