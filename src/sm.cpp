@@ -43,3 +43,5 @@ void sm_init(void) {
 }
 
 void sm_task(void) { my_sm->task(); }
+
+bool sm_event_send(sm_event_t event) { return my_sm->send_event(event); }

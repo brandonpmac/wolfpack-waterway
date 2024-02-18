@@ -12,8 +12,12 @@
 #ifndef SM_H
 #define SM_H
 
+#include "sm_types.h"
+
 void sm_init(void);
 
 void sm_task(void);
+
+bool sm_event_send(sm_event_t event);
 
 #endif // SM_H
