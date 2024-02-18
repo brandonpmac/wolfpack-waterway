@@ -7,3 +7,6 @@
 [submodule "lib/SimpleSerialShell"]
 	path = lib/SimpleSerialShell
 	url = https://github.com/philj404/SimpleSerialShell.git
+[submodule "lib/lstate"]
+	path = lib/lstate
+	url = https://github.com/shuneycutt22/lstate.git
