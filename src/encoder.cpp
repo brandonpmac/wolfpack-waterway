@@ -23,7 +23,7 @@ static bool DT = false;
 
 static encoder_event_t my_encoder_event = ENCODER_EVENT_NONE;
 
-encoder_event_t encoder_event_get(void){
+encoder_event_t encoder_event_get(void) {
   encoder_event_t encoder_event = my_encoder_event;
   my_encoder_event = ENCODER_EVENT_NONE;
   return encoder_event;

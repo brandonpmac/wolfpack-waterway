@@ -18,7 +18,7 @@
 #include "pins.h"
 
 // set the LCD address to 0x27 for a 20 chars and 4 line display
-LiquidCrystal_I2C lcd(0x27,20,4);  
+LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 /// @brief Initialization of the microcontroller
 void initialize(void) {
@@ -31,6 +31,11 @@ void initialize(void) {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(ENCODER_CLK, INPUT);
   pinMode(ENCODER_DT, INPUT);
+  pinMode(SW_LIMIT_MAX, INPUT_PULLUP);
+  pinMode(SW_LIMIT_MIN, INPUT_PULLUP);
+  pinMode(SW_RUN, INPUT_PULLUP);
+  pinMode(RELAY_1, OUTPUT);
+  pinMode(RELAY_2, OUTPUT);
 
   // configure interrupts
   attachInterrupt(digitalPinToInterrupt(ENCODER_CLK), ISR_encoder_CLK, FALLING);
@@ -38,4 +43,6 @@ void initialize(void) {
 
   // initialize menu
   menu_init();
+
+  // initialize stepper
 }

@@ -3,7 +3,7 @@
  * @author Brandon McClenathan (brandon@mcclenathan.us)
  * @brief pin definitions
  * @date 2024-01-30
- * 
+ *
  * North Carolina State University Class of 2024
  * Mechanical Engineering Senior Design, Water Tunnel, Group 5
  */
@@ -22,18 +22,13 @@
 #define DISPLAY_I2C_SDA (20)
 #define DISPLAY_I2C_SCL (21)
 
-#define SW_ENCODER  (4)
-#define SW_LIMIT_MAX
-#define Sw_LIMIT_MIN
-#define SW_RUN
+#define SW_ENCODER (4)
+#define SW_RUN (48)
+#define SW_LIMIT_MAX (50)
+#define SW_LIMIT_MIN (52)
 
-#define PWM_STEPPER_1
-#define PWM_STEPPER_1
-#define PWM_STEPPER_3
-#define PWM_STEPPER_4
-
-#define RELAY_A
-#define RELAY_B
+#define RELAY_1 (53)
+#define RELAY_2 (51)
 
 #define LED_RUN
 

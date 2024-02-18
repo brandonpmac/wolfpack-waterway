@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <lsched.hpp>
 
+#include "control.h"
 #include "init.h"
 #include "menu.h"
 
@@ -38,12 +39,13 @@ void setup() {
   initialize();
 
   scheduler.addTask(led_task, 0, 1000);
-  scheduler.addTask(menu_task, 1, 20); // Split into input and frame task
+  scheduler.addTask(encoder_task, 1, 15);
+  scheduler.addTask(control_task, 2, 20);
+  scheduler.addTask(frame_task, 3, 100);
 }
 
 void loop() {
   scheduler.run();
-
   // stupid timer emulation
   ArduinoTimerTicker();
 }
