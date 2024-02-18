@@ -10,19 +10,24 @@
 
 #include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
+#include <SimpleSerialShell.h>
 #include <lsched.hpp>
 
 #include "encoder.h"
 #include "lcd.h"
 #include "menu.h"
 #include "pins.h"
+#include "shell/shell.h"
 
 // set the LCD address to 0x27 for a 20 chars and 4 line display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 /// @brief Initialization of the microcontroller
 void initialize(void) {
+  // shell init
   Serial.begin(115200);
+  shell.attach(Serial);
+  shell_init();
 
   // initalize display
   lcd.init();

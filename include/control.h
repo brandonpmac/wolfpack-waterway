@@ -6,6 +6,7 @@
  *
  * North Carolina State University Class of 2024
  * Mechanical Engineering Senior Design, Water Tunnel, Group 5
+ *
  */
 
 #ifndef CONTROL_H

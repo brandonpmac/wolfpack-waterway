@@ -1,7 +1,7 @@
 /**
  * @file encoder.h
  * @author Brandon McClenathan (brandon@mcclenathan.us)
- * @brief A set of functions to interpret an encoder.
+ * @brief encoder header file
  * @date 2024-01-30
  *
  * North Carolina State University Class of 2024

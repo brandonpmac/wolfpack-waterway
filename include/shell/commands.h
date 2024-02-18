@@ -1,16 +1,17 @@
 /**
- * @file init.h
+ * @file commands.h
  * @author Brandon McClenathan (brandon@mcclenathan.us)
- * @brief initialization function header file
- * @date 2024-01-30
+ * @brief commands header file
+ * @date 2024-02-17
  *
  * North Carolina State University Class of 2024
  * Mechanical Engineering Senior Design, Water Tunnel, Group 5
+ *
  */
 
-#ifndef INIT_H
-#define INIT_H
+#ifndef COMMANDS_H
+#define COMMANDS_H
 
-void initialize(void);
+int set_target_hndlr(int argc, char **argv);
 
-#endif // INIT_H
+#endif // COMMANDS_H

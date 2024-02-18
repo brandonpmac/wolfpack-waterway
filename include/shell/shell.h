@@ -1,16 +1,19 @@
 /**
- * @file init.h
+ * @file shell.h
  * @author Brandon McClenathan (brandon@mcclenathan.us)
- * @brief initialization function header file
- * @date 2024-01-30
+ * @brief shell header file
+ * @date 2024-02-17
  *
  * North Carolina State University Class of 2024
  * Mechanical Engineering Senior Design, Water Tunnel, Group 5
+ *
  */
 
-#ifndef INIT_H
-#define INIT_H
+#ifndef SHELL_H
+#define SHELL_H
 
-void initialize(void);
+void shell_init(void);
 
-#endif // INIT_H
+void shell_task(void);
+
+#endif // SHELL_H

@@ -14,6 +14,7 @@
 #include "control.h"
 #include "init.h"
 #include "menu.h"
+#include "shell/shell.h"
 
 /// Configure the scheduler
 #define MAX_TASKS (10)
@@ -42,6 +43,7 @@ void setup() {
   scheduler.addTask(encoder_task, 1, 15);
   scheduler.addTask(control_task, 2, 20);
   scheduler.addTask(frame_task, 3, 100);
+  scheduler.addTask(shell_task, 9, 100);
 }
 
 void loop() {
