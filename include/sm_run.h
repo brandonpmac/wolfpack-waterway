@@ -12,9 +12,7 @@
 #ifndef SM_RUN_H
 #define SM_RUN_H
 
-#include <Arduino.h>
-
-#include "sm.h"
+#include "sm_types.h"
 
 void sm_run_entry(sm_event_t last_event);
 

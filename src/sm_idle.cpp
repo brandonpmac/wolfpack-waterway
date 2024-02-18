@@ -1,5 +1,5 @@
 /**
- * @file sm_init.h
+ * @file sm_idle.cpp
  * @author Brandon McClenathan (brandon@mcclenathan.us)
  * @brief
  * @date 2024-02-18
@@ -9,15 +9,17 @@
  *
  */
 
-#ifndef SM_INIT_H
-#define SM_INIT_H
+#include <Arduino.h>
 
+#include "sm_idle.h"
 #include "sm_types.h"
 
-void sm_init_entry(sm_event_t last_event);
+void sm_idle_entry(sm_event_t last_event) {
+	Serial.println("Idle entry");
+}
 
-void sm_init_exit(void);
+void sm_idle_exit(void) {
+	Serial.println("Idle exit");
+}
 
-void sm_init_periodic(void);
-
-#endif // SM_INIT_H
+void sm_idle_periodic(void) {}

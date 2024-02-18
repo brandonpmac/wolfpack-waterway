@@ -12,9 +12,7 @@
 #ifndef SM_IDLE_H
 #define SM_IDLE_H
 
-#include <Arduino.h>
-
-#include "sm.h"
+#include "sm_types.h"
 
 void sm_idle_entry(sm_event_t last_event);
 

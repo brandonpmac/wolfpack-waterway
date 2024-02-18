@@ -12,9 +12,7 @@
 #ifndef SM_ERROR_H
 #define SM_ERROR_H
 
-#include <Arduino.h>
-
-#include "sm.h"
+#include "sm_types.h"
 
 void sm_error_entry(sm_event_t last_event);
 

@@ -12,21 +12,17 @@
 #ifndef SM_TYPES_H
 #define SM_TYPES_H
 
-#include <lstate.hpp>
-
-typedef LState::StateMachine::sm_state_t sm_state_t;
-enum {
-  SM_STATE_INIT = 0,
+typedef enum {
+  SM_STATE_INIT,
   SM_STATE_IDLE,
   SM_STATE_RUN,
   SM_STATE_ERROR,
 
   SM_STATE_COUNT
-};
+} sm_state_t;
 
-typedef LState::StateMachine::sm_event_t sm_event_t;
-enum {
+typedef enum {
   SM_EVENT_INIT_COMPLETE,
-};
+} sm_event_t;
 
 #endif // SM_TYPES_H
