@@ -12,6 +12,16 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
+#include <Arduino.h>
+
+typedef uint8_t pump_enum_t;
+enum {
+  BOTH_ACTIVE,
+  BOTH_OFF,
+  FIRST_ACTIVE,
+  SECOND_ACTIVE,
+};
+
 extern bool limit_max;
 extern bool limit_min;
 extern bool run_control;

@@ -27,8 +27,8 @@
 #define SW_LIMIT_MAX (50)
 #define SW_LIMIT_MIN (52)
 
-#define RELAY_1 (53)
-#define RELAY_2 (51)
+#define PUMP_RELAY_1 (53)
+#define PUMP_RELAY_2 (51)
 
 #define LED_RUN
 

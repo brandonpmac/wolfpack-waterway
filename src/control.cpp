@@ -25,7 +25,9 @@ bool pump_2 = false;
 
 static int pump_trigger_off = 90;
 static int pump_trigger_on = 120;
-static int single_pump = -1;
+static pump_enum_t pump_status = BOTH_OFF;
+static bool first_last =
+    (random(0, 2) == 1); // Bool to remember which pump was last off
 
 void switch_check(void) {
   // checking the max limit switch
@@ -49,31 +51,89 @@ void switch_check(void) {
   }
 }
 
+void single_pump(void) {
+  // if the first pump was last off, set second to last off
+  if (first_last) {
+    pump_status = FIRST_ACTIVE;
+    // if the second pump was the last off, set the first to last off
+  } else {
+    pump_status = SECOND_ACTIVE;
+  }
+  first_last = !first_last;
+}
+
+void pump_status_check(void) {
+  if (run_control) {
+    switch (pump_status) {
+    case BOTH_OFF:
+      if (tunnel_setpoint > pump_trigger_on) {
+        pump_status = BOTH_ACTIVE;
+      } else {
+        single_pump();
+      }
+      break;
+
+    case BOTH_ACTIVE:
+      if (tunnel_setpoint < pump_trigger_off) {
+        single_pump();
+      }
+      break;
+
+    case FIRST_ACTIVE:
+      if (tunnel_setpoint > pump_trigger_on) {
+        pump_status = BOTH_ACTIVE;
+      }
+      break;
+
+    case SECOND_ACTIVE:
+      if (tunnel_setpoint > pump_trigger_on) {
+        pump_status = BOTH_ACTIVE;
+      }
+      break;
+
+    default:
+      Serial.println("unhandeled pump status");
+      pump_status = BOTH_OFF;
+    }
+  } else {
+    pump_status = BOTH_OFF;
+  }
+}
+
+void pump_control(void) {
+  switch (pump_status) {
+  case BOTH_OFF:
+    digitalWrite(PUMP_RELAY_1, LOW);
+    digitalWrite(PUMP_RELAY_2, LOW);
+    break;
+
+  case BOTH_ACTIVE:
+    digitalWrite(PUMP_RELAY_1, HIGH);
+    digitalWrite(PUMP_RELAY_2, HIGH);
+    break;
+
+  case FIRST_ACTIVE:
+    digitalWrite(PUMP_RELAY_1, HIGH);
+    digitalWrite(PUMP_RELAY_2, LOW);
+    break;
+
+  case SECOND_ACTIVE:
+    digitalWrite(PUMP_RELAY_1, HIGH);
+    digitalWrite(PUMP_RELAY_2, LOW);
+    break;
+
+  default:
+    Serial.println("unhandeled pump event");
+    break;
+  }
+}
+
 void control_task(void) {
 
+  // checking status and preforming logic
   switch_check();
-  // single pump logic
-  if ((single_pump == -1) && ((tunnel_setpoint < pump_trigger_off))) {
-    single_pump = random(0, 2);
-  } else if ((single_pump != -1) && ((tunnel_setpoint > pump_trigger_on))) {
-    single_pump = -1;
-  }
+  pump_status_check();
 
-  // controling pump 1
-  if (run_control & (single_pump != 0)) {
-    digitalWrite(RELAY_1, HIGH);
-    pump_1 = true;
-  } else {
-    digitalWrite(RELAY_1, LOW);
-    pump_1 = false;
-  }
-
-  // controling pump 2
-  if (run_control & (single_pump != 1)) {
-    digitalWrite(RELAY_2, HIGH);
-    pump_2 = true;
-  } else {
-    digitalWrite(RELAY_2, LOW);
-    pump_2 = false;
-  }
+  // controling the water tunnel
+  pump_control();
 }

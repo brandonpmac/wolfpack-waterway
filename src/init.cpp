@@ -39,8 +39,8 @@ void initialize(void) {
   pinMode(SW_LIMIT_MAX, INPUT_PULLUP);
   pinMode(SW_LIMIT_MIN, INPUT_PULLUP);
   pinMode(SW_RUN, INPUT_PULLUP);
-  pinMode(RELAY_1, OUTPUT);
-  pinMode(RELAY_2, OUTPUT);
+  pinMode(PUMP_RELAY_1, OUTPUT);
+  pinMode(PUMP_RELAY_2, OUTPUT);
 
   // configure interrupts
   attachInterrupt(digitalPinToInterrupt(ENCODER_CLK), ISR_encoder_CLK, FALLING);
