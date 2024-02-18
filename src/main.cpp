@@ -15,6 +15,7 @@
 #include "init.h"
 #include "menu.h"
 #include "shell/shell.h"
+#include "sm.h"
 
 /// Configure the scheduler
 #define MAX_TASKS (10)
@@ -39,10 +40,11 @@ void led_task(void) { digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); }
 void setup() {
   initialize();
 
-  scheduler.addTask(led_task, 0, 1000);
-  scheduler.addTask(encoder_task, 1, 15);
-  scheduler.addTask(control_task, 2, 20);
-  scheduler.addTask(frame_task, 3, 100);
+  scheduler.addTask(sm_task, 0, 100);
+  scheduler.addTask(led_task, 1, 1000);
+  scheduler.addTask(encoder_task, 2, 15);
+  scheduler.addTask(control_task, 3, 20);
+  scheduler.addTask(frame_task, 4, 100);
   scheduler.addTask(shell_task, 9, 100);
 }
 
