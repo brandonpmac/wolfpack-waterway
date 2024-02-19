@@ -14,13 +14,12 @@
 
 #include <Arduino.h>
 
-typedef uint8_t pump_enum_t;
-enum {
+typedef enum {
   BOTH_ACTIVE,
   BOTH_OFF,
   FIRST_ACTIVE,
   SECOND_ACTIVE,
-};
+} pump_enum_t;
 
 extern bool limit_max;
 extern bool limit_min;

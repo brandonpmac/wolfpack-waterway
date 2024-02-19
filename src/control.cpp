@@ -26,10 +26,25 @@ bool pump_2 = false;
 static int pump_trigger_off = 90;
 static int pump_trigger_on = 120;
 static pump_enum_t pump_status = BOTH_OFF;
-static bool first_last =
-    (random(0, 2) == 1); // Bool to remember which pump was last off
+static bool first_last = random(2); // Bool to remember which pump was last off
 
-void switch_check(void) {
+static void switch_check(void);
+static void single_pump(void);
+static void pump_status_check(void);
+static void pump_control(void);
+
+void control_task(void) {
+
+  // checking status and performing logic
+  switch_check();
+  pump_status_check();
+
+  // controlling the water tunnel
+  pump_control();
+}
+
+
+static void switch_check(void) {
   // checking the max limit switch
   if (digitalRead(SW_LIMIT_MAX) == LOW) {
     limit_max = true;
@@ -51,7 +66,7 @@ void switch_check(void) {
   }
 }
 
-void single_pump(void) {
+static void single_pump(void) {
   // if the first pump was last off, set second to last off
   if (first_last) {
     pump_status = FIRST_ACTIVE;
@@ -62,7 +77,7 @@ void single_pump(void) {
   first_last = !first_last;
 }
 
-void pump_status_check(void) {
+static void pump_status_check(void) {
   if (run_control) {
     switch (pump_status) {
     case BOTH_OFF:
@@ -100,7 +115,7 @@ void pump_status_check(void) {
   }
 }
 
-void pump_control(void) {
+static void pump_control(void) {
   switch (pump_status) {
   case BOTH_OFF:
     digitalWrite(PUMP_RELAY_1, LOW);
@@ -128,12 +143,3 @@ void pump_control(void) {
   }
 }
 
-void control_task(void) {
-
-  // checking status and preforming logic
-  switch_check();
-  pump_status_check();
-
-  // controling the water tunnel
-  pump_control();
-}
