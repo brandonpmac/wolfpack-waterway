@@ -15,18 +15,24 @@
 #include <Arduino.h>
 
 typedef enum {
-  BOTH_ACTIVE,
-  BOTH_OFF,
-  FIRST_ACTIVE,
-  SECOND_ACTIVE,
+  PUMPS_BOTH_ACTIVE,
+  PUMPS_BOTH_OFF,
+  PUMPS_FIRST_ACTIVE,
+  PUMPS_SECOND_ACTIVE,
 } pump_enum_t;
 
-extern bool limit_max;
-extern bool limit_min;
-extern bool run_control;
-extern bool pump_1;
-extern bool pump_2;
+// getters
+pump_enum_t pump_status_get(void);
+int control_setpoint_get(void);
+int control_process_variable_get(void);
+bool limit_max_get(void);
+bool limit_min_get(void);
+bool control_active_get(void);
 
+// setters
+void control_setpoint_set(int new_control_setpoint);
+
+// tasks
 void control_task(void);
 
 #endif // CONTROL_H

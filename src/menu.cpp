@@ -14,15 +14,12 @@
 #include "control.h"
 #include "encoder.h"
 #include "lcd.h"
+#include "menu.h"
 
-int tunnel_setpoint = 0;
+// variables
+static int encoder_increment = 5;
 
-bool update_display = true; // for the memes
-bool previous_pump_1 = false;
-bool previous_pump_2 = false;
-bool previous_limit_max = false;
-bool previous_limit_min = false;
-
+display_frame_t frame = DISPLAY_FRAME_INIT;
 static char buffer[4][21] = {
     "Target :        mm/s",
     "Current:   ---- mm/s",
@@ -30,18 +27,8 @@ static char buffer[4][21] = {
     "Pump2: OFF | Min:   ",
 };
 
-void menu_init(void) {
-  // Startup Message
-  lcd.backlight();
-  lcd.setCursor(0, 0);
-  lcd.print("--------------------");
-  lcd.setCursor(6, 1);
-  lcd.print("Wolfpack");
-  lcd.setCursor(6, 2);
-  lcd.print("Waterway");
-  lcd.setCursor(0, 3);
-  lcd.print("--------------------");
-}
+// function declratations
+static void populate_display_frame(display_frame_t frame);
 
 void encoder_task(void) {
   encoder_event_t event = encoder_event_get();
@@ -51,18 +38,14 @@ void encoder_task(void) {
     break;
 
   case ENCODER_EVENT_LEFT:
-    if (tunnel_setpoint == 0) {
+    if (control_setpoint_get() == 0) {
       break;
     }
-    tunnel_setpoint -= 5;
-    sprintf(&buffer[0][11], "%04d mm/s", tunnel_setpoint);
-    update_display = true;
+    control_setpoint_set(control_setpoint_get() - encoder_increment);
     break;
 
   case ENCODER_EVENT_RIGHT:
-    tunnel_setpoint += 5;
-    sprintf(&buffer[0][11], "%04d mm/s", tunnel_setpoint);
-    update_display = true;
+    control_setpoint_set(control_setpoint_get() + encoder_increment);
     break;
 
   case ENCODER_EVENT_BTN:
@@ -72,63 +55,101 @@ void encoder_task(void) {
     Serial.println("unhandled encoder event");
     break;
   }
+}
 
-  if (pump_1 != previous_pump_1) {
-    previous_pump_1 = pump_1;
-    if (pump_1) {
-      strcpy(&buffer[2][0], "Pump1: ON  | ");
-      update_display = true;
-    } else {
-      strcpy(&buffer[2][0], "Pump1: OFF | ");
-      update_display = true;
-    }
-  }
+// Populates the buffer with the correct data
+static void populate_display_frame(display_frame_t frame) {
+  switch (frame) {
+  case DISPLAY_FRAME_INIT:
+    strcpy(&buffer[0][0], "--------------------");
+    strcpy(&buffer[1][0], "      WOLFPACK      ");
+    strcpy(&buffer[2][0], "      WATERWAY      ");
+    strcpy(&buffer[3][0], "--------------------");
+    break;
 
-  if (pump_2 != previous_pump_2) {
-    previous_pump_2 = pump_2;
-    if (pump_2) {
-      strcpy(&buffer[3][0], "Pump2: ON  | ");
-      update_display = true;
-    } else {
-      strcpy(&buffer[3][0], "Pump2: OFF | ");
-      update_display = true;
-    }
-  }
+  case DISPALY_FRAME_HOME:
+    strcpy(&buffer[0][0], "--------------------");
+    strcpy(&buffer[1][0], "      WOLFPACK      ");
+    strcpy(&buffer[2][0], "      WATERWAY      ");
+    strcpy(&buffer[3][0], "--------------------");
+    break;
 
-  if (limit_max != previous_limit_max) {
-    previous_limit_max = limit_max;
-    if (limit_max) {
-      strcpy(&buffer[2][13], "Max: X ");
-      update_display = true;
-    } else {
-      strcpy(&buffer[2][13], "Max:   ");
-      Serial.println("It happened!!!!");
-      update_display = true;
-    }
-  }
+  case DISPLAY_FRAME_IDLE:
+    int target = control_setpoint_get();
+    int current = control_process_variable_get();
+    pump_enum_t pump_current_status = pump_status_get();
+    static char pump_1_status[4] = {"   "};
+    static char pump_2_status[4] = {"   "};
+    static char limit_max_status = ' ';
+    static char limit_min_status = ' ';
 
-  if (limit_min != previous_limit_min) {
-    previous_limit_min = limit_min;
-    if (limit_min) {
-      strcpy(&buffer[3][13], "Min: X ");
-      update_display = true;
-    } else {
-      strcpy(&buffer[3][13], "Min:   ");
-      update_display = true;
+    switch (pump_current_status) {
+    case PUMPS_BOTH_ACTIVE:
+      strcpy(&pump_1_status[0], "ON ");
+      strcpy(&pump_2_status[0], "ON ");
+      break;
+
+    case PUMPS_BOTH_OFF:
+      strcpy(&pump_1_status[0], "OFF");
+      strcpy(&pump_2_status[0], "OFF");
+      break;
+
+    case PUMPS_FIRST_ACTIVE:
+      strcpy(&pump_1_status[0], "ON ");
+      strcpy(&pump_2_status[0], "OFF");
+      break;
+
+    case PUMPS_SECOND_ACTIVE:
+      strcpy(&pump_1_status[0], "OFF");
+      strcpy(&pump_2_status[0], "ON ");
+      break;
     }
+    // check max limit switch
+    if (limit_max_get()) {
+      limit_max_status = 'X';
+    }
+    // check min limit switch
+    if (limit_min_get()) {
+      limit_min_status = 'X';
+    }
+
+    sprintf(&buffer[0][0], "Target :   %04d mm/s", target);
+    sprintf(&buffer[1][0], "Current:   %04d mm/s", current);
+    sprintf(&buffer[2][0], "Pump1: %s | Max: %c ", pump_1_status,
+            limit_max_status);
+    sprintf(&buffer[3][0], "Pump2: %s | Min: %c ", pump_2_status,
+            limit_min_status);
+    break;
+
+  case DISPLAY_FRAME_RUN:
+    strcpy(&buffer[0][0], "--------------------");
+    strcpy(&buffer[1][0], "      WOLFPACK      ");
+    strcpy(&buffer[2][0], "      WATERWAY      ");
+    strcpy(&buffer[3][0], "--------------------");
+    break;
+
+  case DISPLAY_FRAME_ERROR:
+    strcpy(&buffer[0][0], "--------------------");
+    strcpy(&buffer[1][0], "      WOLFPACK      ");
+    strcpy(&buffer[2][0], "      WATERWAY      ");
+    strcpy(&buffer[3][0], "--------------------");
+    break;
+
+  default:
+    Serial.println("Error: Unhandled display state");
+    break;
   }
 }
 
+// Updates the frame to print to the lcd screen
 void frame_task(void) {
-  if (update_display) {
-    update_display = false;
-    lcd.setCursor(0, 0);
-    lcd.print(buffer[0]);
-    lcd.setCursor(0, 1);
-    lcd.print(buffer[1]);
-    lcd.setCursor(0, 2);
-    lcd.print(buffer[2]);
-    lcd.setCursor(0, 3);
-    lcd.print(buffer[3]);
-  }
+  populate_display_frame(frame);
+  lcd.setCursor(0, 0);
+  lcd.print(buffer[0]);
+  lcd.setCursor(0, 1);
+  lcd.print(buffer[1]);
+  lcd.setCursor(0, 2);
+  lcd.print(buffer[2]);
+  lcd.setCursor(0, 3);
+  lcd.print(buffer[3]);
 }

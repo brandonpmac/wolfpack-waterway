@@ -47,9 +47,6 @@ void initialize(void) {
   attachInterrupt(digitalPinToInterrupt(ENCODER_CLK), ISR_encoder_CLK, FALLING);
   attachInterrupt(digitalPinToInterrupt(ENCODER_DT), ISR_encoder_DT, FALLING);
 
-  // initialize menu
-  menu_init();
-
   // initialize state machine
   sm_init();
 }

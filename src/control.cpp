@@ -13,28 +13,33 @@
 #include "menu.h"
 #include "pins.h"
 
-const int steps_per_revolution = 200;
-int current_step = 0;
+// limit switch variables
+static bool limit_max = false;
+static bool limit_min = false;
 
-bool limit_max = false;
-bool limit_min = false;
-
-bool run_control = false;
-bool pump_1 = false;
-bool pump_2 = false;
-
+// pump variables
 static int pump_trigger_off = 90;
 static int pump_trigger_on = 120;
-static pump_enum_t pump_status = BOTH_OFF;
-static bool first_last = random(2); // Bool to remember which pump was last off
+static bool pump_single_switch =
+    random(2); // Bool to remember which pump was last off
 
+// control variables
+static bool control_active = false;
+static int control_setpoint = 0;
+static int control_process_variable = 0;
+static pump_enum_t pump_status = PUMPS_BOTH_OFF;
+
+// function declarations
 static void switch_check(void);
 static void single_pump(void);
 static void pump_status_check(void);
 static void pump_control(void);
 
-void control_task(void) {
+// tasks
 
+/// @brief function that runs the control loop
+/// @param
+void control_task(void) {
   // checking status and performing logic
   switch_check();
   pump_status_check();
@@ -43,6 +48,18 @@ void control_task(void) {
   pump_control();
 }
 
+// getters
+pump_enum_t pump_status_get(void) { return pump_status; }
+int control_setpoint_get(void) { return control_setpoint; }
+int control_process_variable_get(void) { return control_process_variable; }
+bool limit_max_get(void) { return limit_max; }
+bool limit_min_get(void) { return limit_min; }
+bool control_active_get(void) { return control_active; }
+
+// setters
+void control_setpoint_set(int new_control_setpoint) {
+  control_setpoint = new_control_setpoint;
+}
 
 static void switch_check(void) {
   // checking the max limit switch
@@ -57,82 +74,85 @@ static void switch_check(void) {
   } else {
     limit_min = false;
   }
-
   // check if the control switch is flipped
   if (digitalRead(SW_RUN) == LOW) {
-    run_control = true;
+    control_active = true;
   } else {
-    run_control = false;
+    control_active = false;
   }
 }
 
+/// @brief logic to control which pump turns off when only one pump is needed
+/// @param
 static void single_pump(void) {
   // if the first pump was last off, set second to last off
-  if (first_last) {
-    pump_status = FIRST_ACTIVE;
+  if (pump_single_switch) {
+    pump_status = PUMPS_FIRST_ACTIVE;
     // if the second pump was the last off, set the first to last off
   } else {
-    pump_status = SECOND_ACTIVE;
+    pump_status = PUMPS_SECOND_ACTIVE;
   }
-  first_last = !first_last;
+  pump_single_switch = !pump_single_switch;
 }
 
+/// @brief checking the current status of the pumps and changing variables when nessecary
+/// @param  
 static void pump_status_check(void) {
-  if (run_control) {
+  if (control_active) {
     switch (pump_status) {
-    case BOTH_OFF:
-      if (tunnel_setpoint > pump_trigger_on) {
-        pump_status = BOTH_ACTIVE;
+    case PUMPS_BOTH_OFF:
+      if (control_setpoint > pump_trigger_on) {
+        pump_status = PUMPS_BOTH_ACTIVE;
       } else {
         single_pump();
       }
       break;
 
-    case BOTH_ACTIVE:
-      if (tunnel_setpoint < pump_trigger_off) {
+    case PUMPS_BOTH_ACTIVE:
+      if (control_setpoint < pump_trigger_off) {
         single_pump();
       }
       break;
 
-    case FIRST_ACTIVE:
-      if (tunnel_setpoint > pump_trigger_on) {
-        pump_status = BOTH_ACTIVE;
+    case PUMPS_FIRST_ACTIVE:
+      if (control_setpoint > pump_trigger_on) {
+        pump_status = PUMPS_BOTH_ACTIVE;
       }
       break;
 
-    case SECOND_ACTIVE:
-      if (tunnel_setpoint > pump_trigger_on) {
-        pump_status = BOTH_ACTIVE;
+    case PUMPS_SECOND_ACTIVE:
+      if (control_setpoint > pump_trigger_on) {
+        pump_status = PUMPS_BOTH_ACTIVE;
       }
       break;
 
     default:
       Serial.println("unhandeled pump status");
-      pump_status = BOTH_OFF;
+      pump_status = PUMPS_BOTH_OFF;
     }
   } else {
-    pump_status = BOTH_OFF;
+    pump_status = PUMPS_BOTH_OFF;
   }
 }
 
 static void pump_control(void) {
   switch (pump_status) {
-  case BOTH_OFF:
+  case PUMPS_BOTH_OFF:
     digitalWrite(PUMP_RELAY_1, LOW);
     digitalWrite(PUMP_RELAY_2, LOW);
     break;
 
-  case BOTH_ACTIVE:
+  case PUMPS_BOTH_ACTIVE:
     digitalWrite(PUMP_RELAY_1, HIGH);
     digitalWrite(PUMP_RELAY_2, HIGH);
     break;
 
-  case FIRST_ACTIVE:
+  case PUMPS_FIRST_ACTIVE:
     digitalWrite(PUMP_RELAY_1, HIGH);
     digitalWrite(PUMP_RELAY_2, LOW);
     break;
 
-  case SECOND_ACTIVE:
+  case PUMPS_SECOND_ACTIVE:
     digitalWrite(PUMP_RELAY_1, HIGH);
     digitalWrite(PUMP_RELAY_2, LOW);
     break;
@@ -142,4 +162,3 @@ static void pump_control(void) {
     break;
   }
 }
-

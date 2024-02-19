@@ -12,10 +12,10 @@
 #include <Arduino.h>
 #include <SimpleSerialShell.h>
 
+#include "control.h"
 #include "menu.h"
 
 int set_target_hndlr(int argc, char **argv) {
-  Serial.println(tunnel_setpoint);
-
+  Serial.println(control_setpoint_get());
   return EXIT_SUCCESS;
 }

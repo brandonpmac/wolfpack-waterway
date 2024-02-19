@@ -35,6 +35,7 @@ void ArduinoTimerTicker() {
   }
 }
 
+// Blinky
 void led_task(void) { digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); }
 
 void setup() {

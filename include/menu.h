@@ -11,7 +11,13 @@
 #ifndef MENU_H
 #define MENU_H
 
-extern int tunnel_setpoint;
+typedef enum {
+  DISPLAY_FRAME_INIT,
+  DISPALY_FRAME_HOME,
+  DISPLAY_FRAME_IDLE,
+  DISPLAY_FRAME_RUN,
+  DISPLAY_FRAME_ERROR,
+} display_frame_t;
 
 void menu_init(void);
 
