@@ -32,6 +32,9 @@ bool control_active_get(void);
 // setters
 void control_setpoint_set(int new_control_setpoint);
 
+void ISR_flow_sensor_1_SIGNAL(void);
+void ISR_flow_sensor_2_SIGNAL(void);
+
 // tasks
 void control_task(void);
 

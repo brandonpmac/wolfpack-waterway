@@ -13,6 +13,7 @@
 #include <SimpleSerialShell.h>
 #include <lsched.hpp>
 
+#include "control.h"
 #include "encoder.h"
 #include "lcd.h"
 #include "menu.h"
@@ -32,6 +33,7 @@ void initialize(void) {
 
   // initalize display
   lcd.init();
+  lcd.setBacklight(1);
 
   // configure pins
   pinMode(LED_BUILTIN, OUTPUT);
@@ -46,6 +48,10 @@ void initialize(void) {
   // configure interrupts
   attachInterrupt(digitalPinToInterrupt(ENCODER_CLK), ISR_encoder_CLK, FALLING);
   attachInterrupt(digitalPinToInterrupt(ENCODER_DT), ISR_encoder_DT, FALLING);
+  attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_1),
+                  ISR_flow_sensor_1_SIGNAL, FALLING);
+  attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_1),
+                  ISR_flow_sensor_2_SIGNAL, FALLING);
 
   // initialize state machine
   sm_init();

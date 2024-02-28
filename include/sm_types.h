@@ -1,7 +1,7 @@
 /**
  * @file sm_types.h
  * @author Brandon McClenathan (brandon@mcclenathan.us)
- * @brief
+ * @brief header for the state machine types
  * @date 2024-02-18
  *
  * North Carolina State University Class of 2024
@@ -23,6 +23,11 @@ typedef enum {
 
 typedef enum {
   SM_EVENT_INIT_COMPLETE,
+  SM_EVENT_IDLE,
+  SM_EVENT_RUN,
+  SM_EVENT_ERROR_INIT,
+  SM_EVENT_ERROR_IDLE,
+  SM_EVENT_ERROR_RUN,
 } sm_event_t;
 
 #endif // SM_TYPES_H

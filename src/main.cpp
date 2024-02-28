@@ -41,12 +41,12 @@ void led_task(void) { digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); }
 void setup() {
   initialize();
 
-  scheduler.addTask(sm_task, 0, 100, false, false);
-  scheduler.addTask(led_task, 1, 1000, false, false);
+  scheduler.addTask(sm_task, 0, 100, true, true);
+  scheduler.addTask(led_task, 1, 1000, true, true);
   scheduler.addTask(encoder_task, 2, 15, false, false);
   scheduler.addTask(control_task, 3, 20, false, false);
-  scheduler.addTask(frame_task, 4, 100, false, false);
-  scheduler.addTask(shell_task, 9, 100, false, false);
+  scheduler.addTask(frame_task, 4, 100, true, true);
+  scheduler.addTask(shell_task, 9, 100, true, true);
 }
 
 void loop() {

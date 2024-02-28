@@ -23,6 +23,13 @@ static int pump_trigger_on = 120;
 static bool pump_single_switch =
     random(2); // Bool to remember which pump was last off
 
+// flow sensor variables
+static int flow_sensor_1_count = 0;
+static int flow_sensor_2_count = 0;
+static int flow_correction_factor = 0.5;
+static int flow_rate_1;
+static int flow_rate_2;
+
 // control variables
 static bool control_active = false;
 static int control_setpoint = 0;
@@ -61,16 +68,29 @@ void control_setpoint_set(int new_control_setpoint) {
   control_setpoint = new_control_setpoint;
 }
 
+void ISR_flow_sensor_1_SIGNAL(void) { flow_sensor_1_count += 1; }
+
+void ISR_flow_sensor_2_SIGNAL(void) { flow_sensor_2_count += 1; }
+
+void flow_rate_calc(void) {
+  flow_rate_1 = (flow_correction_factor * flow_sensor_1_count) / 60;
+  flow_rate_2 = (flow_correction_factor * flow_sensor_2_count) / 60;
+  flow_sensor_1_count = 0;
+  flow_sensor_2_count = 0;
+}
+
 static void switch_check(void) {
   // checking the max limit switch
   if (digitalRead(SW_LIMIT_MAX) == LOW) {
     limit_max = true;
+    Serial.println("LIMIT_MAX");
   } else {
     limit_max = false;
   }
   // checking the min limit switch
   if (digitalRead(SW_LIMIT_MIN) == LOW) {
     limit_min = true;
+    Serial.println("LIMIT_MIN");
   } else {
     limit_min = false;
   }
@@ -95,8 +115,9 @@ static void single_pump(void) {
   pump_single_switch = !pump_single_switch;
 }
 
-/// @brief checking the current status of the pumps and changing variables when nessecary
-/// @param  
+/// @brief checking the current status of the pumps and changing variables when
+/// nessecary
+/// @param
 static void pump_status_check(void) {
   if (control_active) {
     switch (pump_status) {

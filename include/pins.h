@@ -13,19 +13,19 @@
 
 #include <Arduino.h>
 
-#define ENCODER_CLK (2)
-#define ENCODER_DT (3)
+#define ENCODER_CLK (3)
+#define ENCODER_DT (2)
 
-#define FLOW_SENSOR_A (18)
-#define FLOW_SENSOR_B (19)
+#define FLOW_SENSOR_1 (18)
+#define FLOW_SENSOR_2 (19)
 
 #define DISPLAY_I2C_SDA (20)
 #define DISPLAY_I2C_SCL (21)
 
-#define SW_ENCODER (4)
-#define SW_RUN (48)
-#define SW_LIMIT_MAX (50)
-#define SW_LIMIT_MIN (52)
+#define SW_ENCODER (1)
+#define SW_RUN (6)
+#define SW_LIMIT_MAX (16)
+#define SW_LIMIT_MIN (17)
 
 #define PUMP_RELAY_1 (53)
 #define PUMP_RELAY_2 (51)

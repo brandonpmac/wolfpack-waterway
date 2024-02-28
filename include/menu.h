@@ -19,7 +19,7 @@ typedef enum {
   DISPLAY_FRAME_ERROR,
 } display_frame_t;
 
-void menu_init(void);
+void frame_set(display_frame_t);
 
 void encoder_task(void);
 void frame_task(void);
