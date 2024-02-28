@@ -10,6 +10,7 @@
  */
 
 #include <Arduino.h>
+#include <lsched.hpp>
 
 #include "led.h"
 #include "menu.h"
@@ -23,12 +24,26 @@ bool my_limit_min = false;
 
 void sm_init_entry(sm_event_t last_event) {
   Serial.println("Init entry");
+
+  // enabling tasks
+
+  // changing the display frame
   frame_set(DISPLAY_FRAME_INIT);
+
+  // Setting the led color
   led_color_1_set(GREEN);
   led_color_2_set(BLUE);
 }
 
-void sm_init_exit(void) { Serial.println("Init exit"); }
+void sm_init_exit(void) {
+  Serial.println("Init exit");
+
+  // disabling tasks
+
+  // turning the led off
+  led_color_1_set(OFF);
+  led_color_2_set(OFF);
+}
 
 void sm_init_periodic(void) {
   if (digitalRead(SW_LIMIT_MAX) == LOW) {

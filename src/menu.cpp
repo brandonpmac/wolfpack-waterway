@@ -108,6 +108,10 @@ static void populate_display_frame(display_frame_t frame) {
     strcpy(&buffer[3][0], "--------------------");
     break;
 
+  default:
+    Serial.println("Error: Unhandled display state");
+    break;
+
   case DISPLAY_FRAME_IDLE:
     int new_target = control_setpoint_get();
     int new_current = control_process_variable_get();
@@ -148,6 +152,7 @@ static void populate_display_frame(display_frame_t frame) {
     if (new_pump_status != my_pump_status) {
       update_display[2] = true;
       update_display[3] = true;
+      my_pump_status = new_pump_status;
 
       switch (my_pump_status) {
       case PUMPS_BOTH_ACTIVE:
@@ -189,10 +194,6 @@ static void populate_display_frame(display_frame_t frame) {
       sprintf(&buffer[3][0], "Pump2: %s | Min: %c ", pump_2_status.c_str(),
               limit_min_status);
     }
-    break;
-
-  default:
-    Serial.println("Error: Unhandled display state");
     break;
   }
 }

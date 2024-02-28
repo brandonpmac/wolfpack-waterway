@@ -11,15 +11,18 @@
 
 #include <Arduino.h>
 
+#include "led.h"
 #include "sm_error.h"
 #include "sm_types.h"
 
 void sm_error_entry(sm_event_t last_event) {
-	Serial.println("Error entry");
+  Serial.println("Error entry");
+
+  // setting led color
+  led_color_1_set(RED);
+  led_color_1_set(OFF);
 }
 
-void sm_error_exit(void) {
-	Serial.println("Error exit");
-}
+void sm_error_exit(void) { Serial.println("Error exit"); }
 
 void sm_error_periodic(void) {}

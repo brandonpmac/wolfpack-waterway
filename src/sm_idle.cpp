@@ -11,6 +11,7 @@
 
 #include <Arduino.h>
 
+#include "led.h"
 #include "menu.h"
 #include "pins.h"
 #include "scheduler.h"
@@ -22,10 +23,23 @@ void sm_idle_entry(sm_event_t last_event) {
   Serial.println("Idle entry");
   frame_set(DISPLAY_FRAME_IDLE);
 
-  scheduler.enableTask(2, true, true);
+  // enabling required tasks
+  scheduler.enableTask(2, true, true); // encoder task
+
+  // setting let color
+  led_color_1_set(BLUE);
+  led_color_2_set(OFF);
 }
 
-void sm_idle_exit(void) { Serial.println("Idle exit"); }
+void sm_idle_exit(void) {
+  Serial.println("Idle exit");
+
+  // turning the led off
+  led_color_1_set(OFF);
+  led_color_2_set(OFF);
+
+  scheduler.enableTask(2, false, false); // encoder task
+}
 
 void sm_idle_periodic(void) {
   if (digitalRead(SW_RUN) == LOW) {
