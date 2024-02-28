@@ -10,3 +10,6 @@
 [submodule "lib/lstate"]
 	path = lib/lstate
 	url = https://github.com/shuneycutt22/lstate.git
+[submodule "lib/TMC2209"]
+	path = lib/TMC2209
+	url = https://github.com/janelia-arduino/TMC2209.git
