@@ -11,6 +11,7 @@
 
 #include <Arduino.h>
 
+#include "led.h"
 #include "menu.h"
 #include "pins.h"
 #include "sm.h"
@@ -23,6 +24,8 @@ bool my_limit_min = false;
 void sm_init_entry(sm_event_t last_event) {
   Serial.println("Init entry");
   frame_set(DISPLAY_FRAME_INIT);
+  led_color_1_set(GREEN);
+  led_color_2_set(BLUE);
 }
 
 void sm_init_exit(void) { Serial.println("Init exit"); }

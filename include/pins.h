@@ -32,4 +32,8 @@
 
 #define LED_RUN
 
+#define LED_RED (46)
+#define LED_GREEN (50)
+#define LED_BLUE (52)
+
 #endif // PINS_H

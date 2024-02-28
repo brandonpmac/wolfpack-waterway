@@ -44,6 +44,9 @@ void initialize(void) {
   pinMode(SW_RUN, INPUT_PULLUP);
   pinMode(PUMP_RELAY_1, OUTPUT);
   pinMode(PUMP_RELAY_2, OUTPUT);
+  pinMode(LED_RED, OUTPUT);
+  pinMode(LED_GREEN, OUTPUT);
+  pinMode(LED_BLUE, OUTPUT);
 
   // configure interrupts
   attachInterrupt(digitalPinToInterrupt(ENCODER_CLK), ISR_encoder_CLK, FALLING);

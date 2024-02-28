@@ -13,6 +13,7 @@
 
 #include "control.h"
 #include "init.h"
+#include "led.h"
 #include "menu.h"
 #include "shell/shell.h"
 #include "sm.h"
@@ -34,9 +35,6 @@ void ArduinoTimerTicker() {
     scheduler.timerTick();
   }
 }
-
-// Blinky
-void led_task(void) { digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); }
 
 void setup() {
   initialize();
