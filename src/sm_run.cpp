@@ -17,13 +17,14 @@
 #include "sm.h"
 #include "sm_run.h"
 #include "sm_types.h"
+#include "stepper.h"
 
 void sm_run_entry(sm_event_t last_event) {
   Serial.println("Run entry");
 
   // enabling tasks
   scheduler.enableTask(2, true, true); // encoder task
-  scheduler.enableTask(3, true, true); // control task
+  scheduler.enableTask(4, true, true); // control task
 
   // Setting led colors
   led_color_1_set(GREEN);
@@ -35,7 +36,10 @@ void sm_run_exit(void) {
 
   // disabling tasks
   scheduler.enableTask(2, false, false); // encoder task
-  scheduler.enableTask(3, false, false); // control task
+  scheduler.enableTask(4, false, false); // control task
+
+  stepper_speed_set(0, 0, true);
+  control_process_variable_set(0);
 }
 
 void sm_run_periodic(void) {

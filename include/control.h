@@ -30,12 +30,15 @@ bool limit_min_get(void);
 bool control_active_get(void);
 
 // setters
-void control_setpoint_set(int new_control_setpoint);
+void control_setpoint_set(int);
+void control_process_variable_set(int);
 
+// interupts
 void ISR_flow_sensor_1_SIGNAL(void);
 void ISR_flow_sensor_2_SIGNAL(void);
 
 // tasks
 void control_task(void);
+void switch_task(void);
 
 #endif // CONTROL_H

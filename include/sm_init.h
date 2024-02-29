@@ -12,6 +12,13 @@
 #ifndef SM_INIT_H
 #define SM_INIT_H
 
+typedef enum {
+  POWER_UP,
+  HOME_MIN,
+  HOME_MAX,
+  INIT_FINISH,
+} init_state_t;
+
 #include "sm_types.h"
 
 void sm_init_entry(sm_event_t last_event);

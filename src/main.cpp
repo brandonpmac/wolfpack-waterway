@@ -17,6 +17,7 @@
 #include "menu.h"
 #include "shell/shell.h"
 #include "sm.h"
+#include "stepper.h"
 
 /// Configure the scheduler
 #define MAX_TASKS (10)
@@ -40,10 +41,12 @@ void setup() {
   initialize();
 
   scheduler.addTask(sm_task, 0, 100, true, true);
-  scheduler.addTask(led_task, 1, 1000, true, true);
+  scheduler.addTask(led_task, 1, 500, true, true);
   scheduler.addTask(encoder_task, 2, 15, false, false);
-  scheduler.addTask(control_task, 3, 20, false, false);
-  scheduler.addTask(frame_task, 4, 100, true, true);
+  scheduler.addTask(switch_task, 3, 20, true, true);
+  scheduler.addTask(control_task, 4, 20, false, false);
+  scheduler.addTask(stepper_task, 5, 100, true, true);
+  scheduler.addTask(frame_task, 6, 100, true, true);
   scheduler.addTask(shell_task, 9, 100, true, true);
 }
 

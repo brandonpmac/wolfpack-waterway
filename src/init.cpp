@@ -11,6 +11,7 @@
 #include <Arduino.h>
 #include <LiquidCrystal_I2C.h>
 #include <SimpleSerialShell.h>
+#include <TMC2209.h>
 #include <lsched.hpp>
 
 #include "control.h"
@@ -20,9 +21,14 @@
 #include "pins.h"
 #include "shell/shell.h"
 #include "sm.h"
+#include "stepper_driver.h"
 
 // set the LCD address to 0x27 for a 20 chars and 4 line display
 LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+// Initialize the Stepper Driver
+TMC2209 stepper_driver;
+HardwareSerial &serial_stream = Serial3;
 
 /// @brief Initialization of the microcontroller
 void initialize(void) {
@@ -41,6 +47,7 @@ void initialize(void) {
   pinMode(ENCODER_DT, INPUT);
   pinMode(SW_LIMIT_MAX, INPUT_PULLUP);
   pinMode(SW_LIMIT_MIN, INPUT_PULLUP);
+  pinMode(SW_ENCODER, INPUT_PULLUP);
   pinMode(SW_RUN, INPUT_PULLUP);
   pinMode(PUMP_RELAY_1, OUTPUT);
   pinMode(PUMP_RELAY_2, OUTPUT);
@@ -58,4 +65,20 @@ void initialize(void) {
 
   // initialize state machine
   sm_init();
+
+  // stepper init
+
+  stepper_driver.setup(serial_stream);
+  if (stepper_driver.isSetupAndCommunicating()) {
+    Serial.println("Stepper: Connected");
+  }
+  stepper_driver.setAllCurrentValues(100, 100, 100);
+  stepper_driver.setHardwareEnablePin(STEPPER_DRIVER_ENABLE);
+  stepper_driver.disableAutomaticCurrentScaling();
+  stepper_driver.enableAnalogCurrentScaling();
+  stepper_driver.disableAutomaticGradientAdaptation();
+  stepper_driver.disableCoolStep();
+  stepper_driver.disableStealthChop();
+  stepper_driver.enable();
+  stepper_driver.setMicrostepsPerStep(8);
 }

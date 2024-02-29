@@ -15,6 +15,7 @@
 #include "encoder.h"
 #include "lcd.h"
 #include "menu.h"
+#include "stepper.h"
 
 // variables
 static int encoder_increment = 5;
@@ -65,10 +66,14 @@ void encoder_task(void) {
     break;
 
   case ENCODER_EVENT_RIGHT:
+    if (control_setpoint_get() == 1000) {
+      break;
+    }
     control_setpoint_set(control_setpoint_get() + encoder_increment);
     break;
 
   case ENCODER_EVENT_BTN:
+    Serial.println("BTN PRESS");
     break;
 
   default:
@@ -103,8 +108,8 @@ static void populate_display_frame(display_frame_t frame) {
 
   case DISPLAY_FRAME_ERROR:
     strcpy(&buffer[0][0], "--------------------");
-    strcpy(&buffer[1][0], "      WOLFPACK      ");
-    strcpy(&buffer[2][0], "      WATERWAY      ");
+    strcpy(&buffer[1][0], "       ERROR        ");
+    strcpy(&buffer[2][0], "   RESTART SYSTEM   ");
     strcpy(&buffer[3][0], "--------------------");
     break;
 
@@ -126,7 +131,7 @@ static void populate_display_frame(display_frame_t frame) {
 
     if (new_current != my_current) {
       update_display[1] = true;
-      my_target = new_current;
+      my_current = new_current;
     }
 
     if (new_max_limit != my_max_limit) {
@@ -157,7 +162,7 @@ static void populate_display_frame(display_frame_t frame) {
       switch (my_pump_status) {
       case PUMPS_BOTH_ACTIVE:
         pump_1_status = "ON ";
-        pump_2_status = "OFF";
+        pump_2_status = "ON ";
         break;
 
       case PUMPS_BOTH_OFF:
@@ -182,7 +187,7 @@ static void populate_display_frame(display_frame_t frame) {
     }
 
     if (update_display[1]) {
-      sprintf(&buffer[1][0], "Current :   %04d mm/s", my_current);
+      sprintf(&buffer[1][0], "Current:   %04d mm/s", my_current);
     }
 
     if (update_display[2]) {
@@ -207,8 +212,8 @@ void frame_task(void) {
       update_display[i] = false;
       lcd.setCursor(0, i);
       lcd.print(buffer[i]);
-      Serial.print("Display Update: ");
-      Serial.println(i);
+      // Serial.print("Display Update: ");
+      // Serial.println(i);
     }
   }
 }

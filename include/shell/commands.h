@@ -13,5 +13,6 @@
 #define COMMANDS_H
 
 int set_target_hndlr(int argc, char **argv);
+int stepper_settings_hndlr(int argc, char **argv);
 
 #endif // COMMANDS_H

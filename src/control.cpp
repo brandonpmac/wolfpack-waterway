@@ -12,14 +12,16 @@
 #include "init.h"
 #include "menu.h"
 #include "pins.h"
+#include "sm.h"
+#include "stepper.h"
 
 // limit switch variables
 static bool limit_max = false;
 static bool limit_min = false;
 
 // pump variables
-static int pump_trigger_off = 90;
-static int pump_trigger_on = 120;
+static int pump_trigger_off = 125;
+static int pump_trigger_on = 250;
 static bool pump_single_switch =
     random(2); // Bool to remember which pump was last off
 
@@ -36,8 +38,10 @@ static int control_setpoint = 0;
 static int control_process_variable = 0;
 static pump_enum_t pump_status = PUMPS_BOTH_OFF;
 
+static int stepper_dir = 1;
+static bool encoder_switch_history = false;
+
 // function declarations
-static void switch_check(void);
 static void single_pump(void);
 static void pump_status_check(void);
 static void pump_control(void);
@@ -48,11 +52,22 @@ static void pump_control(void);
 /// @param
 void control_task(void) {
   // checking status and performing logic
-  switch_check();
-  pump_status_check();
 
-  // controlling the water tunnel
-  pump_control();
+  if ((digitalRead(SW_ENCODER) == LOW) and !encoder_switch_history) {
+    if (digitalRead(SW_LIMIT_MAX) == HIGH and
+        (digitalRead(SW_LIMIT_MIN) == HIGH)) {
+      encoder_switch_history = true;
+      stepper_dir = -1 * stepper_dir;
+    }
+  } else if ((digitalRead(SW_ENCODER) == HIGH) and encoder_switch_history) {
+    encoder_switch_history = false;
+  }
+
+  if (control_setpoint * 10 * stepper_dir != stepper_target_get()) {
+    stepper_speed_set(control_setpoint * 10 * stepper_dir, 50, false);
+  }
+
+  control_process_variable = abs(stepper_current_get() / 10);
 }
 
 // getters
@@ -68,6 +83,10 @@ void control_setpoint_set(int new_control_setpoint) {
   control_setpoint = new_control_setpoint;
 }
 
+void control_process_variable_set(int new_process_variable) {
+  control_process_variable = new_process_variable;
+}
+
 void ISR_flow_sensor_1_SIGNAL(void) { flow_sensor_1_count += 1; }
 
 void ISR_flow_sensor_2_SIGNAL(void) { flow_sensor_2_count += 1; }
@@ -79,7 +98,7 @@ void flow_rate_calc(void) {
   flow_sensor_2_count = 0;
 }
 
-static void switch_check(void) {
+void switch_task(void) {
   // checking the max limit switch
   if (digitalRead(SW_LIMIT_MAX) == LOW) {
     limit_max = true;
@@ -100,6 +119,10 @@ static void switch_check(void) {
   } else {
     control_active = false;
   }
+
+  pump_status_check();
+  // controlling the water tunnel
+  pump_control();
 }
 
 /// @brief logic to control which pump turns off when only one pump is needed
@@ -124,6 +147,7 @@ static void pump_status_check(void) {
     case PUMPS_BOTH_OFF:
       if (control_setpoint > pump_trigger_on) {
         pump_status = PUMPS_BOTH_ACTIVE;
+        Serial.println("Both pumps on");
       } else {
         single_pump();
       }
@@ -138,6 +162,7 @@ static void pump_status_check(void) {
     case PUMPS_FIRST_ACTIVE:
       if (control_setpoint > pump_trigger_on) {
         pump_status = PUMPS_BOTH_ACTIVE;
+        Serial.println("First Pump On");
       }
       break;
 
@@ -174,8 +199,8 @@ static void pump_control(void) {
     break;
 
   case PUMPS_SECOND_ACTIVE:
-    digitalWrite(PUMP_RELAY_1, HIGH);
-    digitalWrite(PUMP_RELAY_2, LOW);
+    digitalWrite(PUMP_RELAY_1, LOW);
+    digitalWrite(PUMP_RELAY_2, HIGH);
     break;
 
   default:

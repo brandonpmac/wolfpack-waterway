@@ -12,5 +12,4 @@
 #define INIT_H
 
 void initialize(void);
-
 #endif // INIT_H
