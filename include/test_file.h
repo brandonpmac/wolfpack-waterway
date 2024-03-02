@@ -1,0 +1,2 @@
+
+int stupidity(int foo);
