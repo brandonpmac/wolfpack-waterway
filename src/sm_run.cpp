@@ -23,8 +23,8 @@ void sm_run_entry(sm_event_t last_event) {
   Serial.println("Run entry");
 
   // enabling tasks
-  scheduler.enableTask(2, true, true); // encoder task
-  scheduler.enableTask(4, true, true); // control task
+  scheduler.enableTask(2, true, true); // encoder task    static Scheduler& getInstance();
+  scheduler.enableTask(4, true, true); // control task    LSched::Scheduler::getInstance().enable;
 
   // Setting led colors
   led_color_1_set(GREEN);

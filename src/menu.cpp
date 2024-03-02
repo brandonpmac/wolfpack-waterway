@@ -99,13 +99,6 @@ static void populate_display_frame(display_frame_t frame) {
     strcpy(&buffer[3][0], "--------------------");
     break;
 
-  case DISPLAY_FRAME_RUN:
-    strcpy(&buffer[0][0], "--------------------");
-    strcpy(&buffer[1][0], "      WOLFPACK      ");
-    strcpy(&buffer[2][0], "      WATERWAY      ");
-    strcpy(&buffer[3][0], "--------------------");
-    break;
-
   case DISPLAY_FRAME_ERROR:
     strcpy(&buffer[0][0], "--------------------");
     strcpy(&buffer[1][0], "       ERROR        ");
@@ -118,6 +111,7 @@ static void populate_display_frame(display_frame_t frame) {
     break;
 
   case DISPLAY_FRAME_IDLE:
+  case DISPLAY_FRAME_RUN:
     int new_target = control_setpoint_get();
     int new_current = control_process_variable_get();
     bool new_max_limit = limit_max_get();

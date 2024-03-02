@@ -23,7 +23,7 @@
 
 bool my_limit_max = false;
 bool my_limit_min = false;
-static init_state_t init_state = POWER_UP;
+static init_state_t my_init_state = POWER_UP;
 static int home_speed = 10000;
 static uint32_t init_time = millis();
 static int max_home_time = 15000;
@@ -59,9 +59,9 @@ void sm_init_exit(void) {
 }
 
 void sm_init_periodic(void) {
-  switch (init_state) {
+  switch (my_init_state) {
   case POWER_UP:
-    init_state = HOME_MIN;
+    my_init_state = HOME_MIN;
     Serial.println("Homing min limit");
     stepper_speed_set(home_speed * -1, 100, false);
     init_time = millis();
@@ -69,7 +69,7 @@ void sm_init_periodic(void) {
 
   case HOME_MIN:
     if (digitalRead(SW_LIMIT_MIN) == LOW) {
-      init_state = HOME_MAX;
+      my_init_state = HOME_MAX;
       Serial.println("Homing max limit");
       stepper_speed_set(0, 0, true);
       stepper_speed_set(home_speed, 100, false);
@@ -82,7 +82,7 @@ void sm_init_periodic(void) {
 
   case HOME_MAX:
     if (digitalRead(SW_LIMIT_MAX) == LOW) {
-      init_state = INIT_FINISH;
+      my_init_state = INIT_FINISH;
       Serial.println("Home complete");
       stepper_speed_set(0, 0, true);
     }
@@ -92,7 +92,6 @@ void sm_init_periodic(void) {
     break;
 
   case INIT_FINISH:
-
     sm_event_send(SM_EVENT_INIT_COMPLETE);
     break;
 

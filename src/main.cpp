@@ -39,7 +39,6 @@ void ArduinoTimerTicker() {
 
 void setup() {
   initialize();
-
   scheduler.addTask(sm_task, 0, 100, true, true);
   scheduler.addTask(led_task, 1, 500, true, true);
   scheduler.addTask(encoder_task, 2, 15, false, false);
