@@ -12,8 +12,6 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
-#include <Arduino.h>
-
 typedef enum {
   PUMPS_BOTH_ACTIVE,
   PUMPS_BOTH_OFF,

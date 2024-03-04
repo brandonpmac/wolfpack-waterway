@@ -11,8 +11,8 @@
 
 #include <Arduino.h>
 
-#include "led.h"
 #include "menu.h"
+#include "si_led.h"
 #include "sm_error.h"
 #include "sm_types.h"
 
@@ -20,8 +20,8 @@ void sm_error_entry(sm_event_t last_event) {
   Serial.println("Error entry");
 
   // setting led color
-  led_color_1_set(RED);
-  led_color_2_set(OFF);
+  si_led_color_1_set(RED);
+  si_led_color_2_set(OFF);
 
   frame_set(DISPLAY_FRAME_ERROR);
 }

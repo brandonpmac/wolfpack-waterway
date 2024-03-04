@@ -1,7 +1,7 @@
 /**
- * @file stepper.h
+ * @file si_stepper.h
  * @author Brandon McClenathan (brandon@mcclenathan.us)
- * @brief stepper motor header file
+ * @brief system interface: stepper motor
  * @date 2024-02-28
  *
  * North Carolina State University Class of 2024
@@ -9,25 +9,20 @@
  *
  */
 
-#ifndef STEPPER_H
-#define STEPPER_H
+#ifndef SI_STEPPER_H
+#define SI_STEPPER_H
 
-#include <Arduino.h>
-#include <TMC2209.h>
+#include <stdint.h>
 
 typedef enum {
   STEPPER_COMM_AND_SETUP,
   STEPPER_COMM_NOT_SETUP,
   STEPPER_NOT_COMMUNICATING,
   STEPPER_OFF,
-} stepper_status_t;
+} si_stepper_status_t;
 
-void stepper_task(void);
+void si_stepper_speed_set(int32_t speed);
 
-void stepper_speed_set(int, int, bool);
+int32_t si_stepper_speed_get(void);
 
-int stepper_target_get(void);
-
-int stepper_current_get(void);
-
-#endif // STEPPER_H
+#endif // SI_STEPPER_H

@@ -17,9 +17,11 @@ typedef enum {
   DISPLAY_FRAME_IDLE,
   DISPLAY_FRAME_RUN,
   DISPLAY_FRAME_ERROR,
+
+  DISPLAY_FRAME_CNT,
 } display_frame_t;
 
-void frame_set(display_frame_t);
+void frame_set(display_frame_t new_frame);
 
 void encoder_task(void);
 void frame_task(void);

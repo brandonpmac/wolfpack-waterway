@@ -15,11 +15,13 @@
 #include <lsched.hpp>
 
 #include "control.h"
-#include "encoder.h"
 #include "lcd.h"
+#include "log.h"
 #include "menu.h"
 #include "pins.h"
 #include "shell/shell.h"
+#include "si_encoder.h"
+#include "si_flow_sensor.h"
 #include "sm.h"
 #include "stepper_driver.h"
 
@@ -30,10 +32,18 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 TMC2209 stepper_driver;
 HardwareSerial &serial_stream = Serial3;
 
+// Initialize standard output
+FILE f_stdout;
+int sput(char c, __attribute__((unused)) FILE *f) { return !Serial.write(c); }
+
 /// @brief Initialization of the microcontroller
 void initialize(void) {
-  // shell init
   Serial.begin(115200);
+  fdev_setup_stream(&f_stdout, sput, nullptr, _FDEV_SETUP_WRITE);
+  stdout = &f_stdout;
+  stderr = &f_stdout;
+
+  // shell init
   shell.attach(Serial);
   shell_init();
 
@@ -43,25 +53,27 @@ void initialize(void) {
 
   // configure pins
   pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(ENCODER_CLK, INPUT);
-  pinMode(ENCODER_DT, INPUT);
-  pinMode(SW_LIMIT_MAX, INPUT_PULLUP);
-  pinMode(SW_LIMIT_MIN, INPUT_PULLUP);
-  pinMode(SW_ENCODER, INPUT_PULLUP);
-  pinMode(SW_RUN, INPUT_PULLUP);
-  pinMode(PUMP_RELAY_1, OUTPUT);
-  pinMode(PUMP_RELAY_2, OUTPUT);
-  pinMode(LED_RED, OUTPUT);
-  pinMode(LED_GREEN, OUTPUT);
-  pinMode(LED_BLUE, OUTPUT);
+  pinMode(PIN_ENCODER_CLK, INPUT);
+  pinMode(PIN_ENCODER_DT, INPUT);
+  pinMode(PIN_SW_LIMIT_MAX, INPUT_PULLUP);
+  pinMode(PIN_SW_LIMIT_MIN, INPUT_PULLUP);
+  pinMode(PIN_SW_ENCODER, INPUT_PULLUP);
+  pinMode(PIN_SW_RUN, INPUT_PULLUP);
+  pinMode(PIN_RELAY_PUMP_1, OUTPUT);
+  pinMode(PIN_RELAY_PUMP_2, OUTPUT);
+  pinMode(PIN_LED_RED, OUTPUT);
+  pinMode(PIN_LED_GREEN, OUTPUT);
+  pinMode(PIN_LED_BLUE, OUTPUT);
 
   // configure interrupts
-  attachInterrupt(digitalPinToInterrupt(ENCODER_CLK), ISR_encoder_CLK, FALLING);
-  attachInterrupt(digitalPinToInterrupt(ENCODER_DT), ISR_encoder_DT, FALLING);
-  attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_1),
-                  ISR_flow_sensor_1_SIGNAL, FALLING);
-  attachInterrupt(digitalPinToInterrupt(FLOW_SENSOR_1),
-                  ISR_flow_sensor_2_SIGNAL, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_CLK), ISR_encoder_CLK,
+                  FALLING);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENCODER_DT), ISR_encoder_DT,
+                  FALLING);
+  attachInterrupt(digitalPinToInterrupt(PIN_FLOW_SENSOR_1),
+                  ISR_flow_sensor_1_signal, FALLING);
+  attachInterrupt(digitalPinToInterrupt(PIN_FLOW_SENSOR_1),
+                  ISR_flow_sensor_2_signal, FALLING);
 
   // initialize state machine
   sm_init();
@@ -70,10 +82,10 @@ void initialize(void) {
 
   stepper_driver.setup(serial_stream);
   if (stepper_driver.isSetupAndCommunicating()) {
-    Serial.println("Stepper: Connected");
+    LOG_INF("Stepper: Connected");
   }
   stepper_driver.setAllCurrentValues(100, 100, 100);
-  stepper_driver.setHardwareEnablePin(STEPPER_DRIVER_ENABLE);
+  stepper_driver.setHardwareEnablePin(PIN_STEPPER_DRIVER_ENABLE);
   stepper_driver.disableAutomaticCurrentScaling();
   stepper_driver.enableAnalogCurrentScaling();
   stepper_driver.disableAutomaticGradientAdaptation();

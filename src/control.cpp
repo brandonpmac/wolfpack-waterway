@@ -8,33 +8,37 @@
  * Mechanical Engineering Senior Design, Water Tunnel, Group 5
  */
 
+#include <stdlib.h>
+
 #include "control.h"
-#include "init.h"
-#include "menu.h"
-#include "pins.h"
+#include "log.h"
+#include "si_flow_sensor.h"
+#include "si_relay.h"
+#include "si_stepper.h"
+#include "si_switch.h"
 #include "sm.h"
-#include "stepper.h"
+
+#define FLOW_CORRECTION_FACTOR (2)
 
 // limit switch variables
-static bool limit_max = false;
-static bool limit_min = false;
+static bool my_sw_limit_max = false;
+static bool my_sw_limit_min = false;
 
 // pump variables
-static int pump_trigger_off = 125;
-static int pump_trigger_on = 250;
+static int my_pump_trigger_off = 125;
+static int my_pump_trigger_on = 250;
 static bool pump_single_switch =
-    random(2); // Bool to remember which pump was last off
+    rand() % 2; // Bool to remember which pump was last off
 
 // flow sensor variables
 static int flow_sensor_1_count = 0;
 static int flow_sensor_2_count = 0;
-static int flow_correction_factor = 0.5;
 static int flow_rate_1;
 static int flow_rate_2;
 
 // control variables
-static bool control_active = false;
-static int control_setpoint = 0;
+static bool my_sw_run = false;
+static int my_setpoint = 0;
 static int control_process_variable = 0;
 static pump_enum_t pump_status = PUMPS_BOTH_OFF;
 
@@ -50,74 +54,48 @@ static void pump_control(void);
 
 /// @brief function that runs the control loop
 /// @param
-void control_task(void) {
-  // checking status and performing logic
+void control_task(void) {}
 
-  if ((digitalRead(SW_ENCODER) == LOW) and !encoder_switch_history) {
-    if (digitalRead(SW_LIMIT_MAX) == HIGH and
-        (digitalRead(SW_LIMIT_MIN) == HIGH)) {
-      encoder_switch_history = true;
-      stepper_dir = -1 * stepper_dir;
-    }
-  } else if ((digitalRead(SW_ENCODER) == HIGH) and encoder_switch_history) {
-    encoder_switch_history = false;
-  }
-
-  if (control_setpoint * 10 * stepper_dir != stepper_target_get()) {
-    stepper_speed_set(control_setpoint * 10 * stepper_dir, 50, false);
-  }
-
-  control_process_variable = abs(stepper_current_get() / 10);
-}
-
-// getters
 pump_enum_t pump_status_get(void) { return pump_status; }
-int control_setpoint_get(void) { return control_setpoint; }
+int control_setpoint_get(void) { return my_setpoint; }
 int control_process_variable_get(void) { return control_process_variable; }
-bool limit_max_get(void) { return limit_max; }
-bool limit_min_get(void) { return limit_min; }
-bool control_active_get(void) { return control_active; }
+bool limit_max_get(void) { return my_sw_limit_max; }
+bool limit_min_get(void) { return my_sw_limit_min; }
+bool control_active_get(void) { return my_sw_run; }
 
 // setters
 void control_setpoint_set(int new_control_setpoint) {
-  control_setpoint = new_control_setpoint;
+  my_setpoint = new_control_setpoint;
 }
 
 void control_process_variable_set(int new_process_variable) {
   control_process_variable = new_process_variable;
 }
 
-void ISR_flow_sensor_1_SIGNAL(void) { flow_sensor_1_count += 1; }
-
-void ISR_flow_sensor_2_SIGNAL(void) { flow_sensor_2_count += 1; }
-
-void flow_rate_calc(void) {
-  flow_rate_1 = (flow_correction_factor * flow_sensor_1_count) / 60;
-  flow_rate_2 = (flow_correction_factor * flow_sensor_2_count) / 60;
-  flow_sensor_1_count = 0;
-  flow_sensor_2_count = 0;
+int flow_rate_calc(int flow_count) {
+  return (flow_count * FLOW_CORRECTION_FACTOR);
 }
 
 void switch_task(void) {
-  // checking the max limit switch
-  if (digitalRead(SW_LIMIT_MAX) == LOW) {
-    limit_max = true;
-    Serial.println("LIMIT_MAX");
-  } else {
-    limit_max = false;
-  }
   // checking the min limit switch
-  if (digitalRead(SW_LIMIT_MIN) == LOW) {
-    limit_min = true;
-    Serial.println("LIMIT_MIN");
+  if (si_switch_get(SW_LIMIT_MIN)) {
+    my_sw_limit_min = true;
   } else {
-    limit_min = false;
+    my_sw_limit_min = false;
   }
-  // check if the control switch is flipped
-  if (digitalRead(SW_RUN) == LOW) {
-    control_active = true;
+
+  // checking the max limit switch
+  if (si_switch_get(SW_LIMIT_MAX)) {
+    my_sw_limit_max = true;
   } else {
-    control_active = false;
+    my_sw_limit_max = false;
+  }
+
+  // check if the control switch is flipped
+  if (si_switch_get(SW_RUN)) {
+    my_sw_run = true;
+  } else {
+    my_sw_run = false;
   }
 
   pump_status_check();
@@ -142,38 +120,38 @@ static void single_pump(void) {
 /// nessecary
 /// @param
 static void pump_status_check(void) {
-  if (control_active) {
+  if (my_sw_run) {
     switch (pump_status) {
     case PUMPS_BOTH_OFF:
-      if (control_setpoint > pump_trigger_on) {
+      if (my_setpoint > my_pump_trigger_on) {
         pump_status = PUMPS_BOTH_ACTIVE;
-        Serial.println("Both pumps on");
+        LOG_INF("Both pumps on");
       } else {
         single_pump();
       }
       break;
 
     case PUMPS_BOTH_ACTIVE:
-      if (control_setpoint < pump_trigger_off) {
+      if (my_setpoint < my_pump_trigger_off) {
         single_pump();
       }
       break;
 
     case PUMPS_FIRST_ACTIVE:
-      if (control_setpoint > pump_trigger_on) {
+      if (my_setpoint > my_pump_trigger_on) {
         pump_status = PUMPS_BOTH_ACTIVE;
-        Serial.println("First Pump On");
+        LOG_INF("First Pump On");
       }
       break;
 
     case PUMPS_SECOND_ACTIVE:
-      if (control_setpoint > pump_trigger_on) {
+      if (my_setpoint > my_pump_trigger_on) {
         pump_status = PUMPS_BOTH_ACTIVE;
       }
       break;
 
     default:
-      Serial.println("unhandeled pump status");
+      LOG_ERR("unhandeled pump status");
       pump_status = PUMPS_BOTH_OFF;
     }
   } else {
@@ -184,27 +162,27 @@ static void pump_status_check(void) {
 static void pump_control(void) {
   switch (pump_status) {
   case PUMPS_BOTH_OFF:
-    digitalWrite(PUMP_RELAY_1, LOW);
-    digitalWrite(PUMP_RELAY_2, LOW);
+    si_relay_set(RELAY_PUMP_1, false);
+    si_relay_set(RELAY_PUMP_2, false);
     break;
 
   case PUMPS_BOTH_ACTIVE:
-    digitalWrite(PUMP_RELAY_1, HIGH);
-    digitalWrite(PUMP_RELAY_2, HIGH);
+    si_relay_set(RELAY_PUMP_1, true);
+    si_relay_set(RELAY_PUMP_2, true);
     break;
 
   case PUMPS_FIRST_ACTIVE:
-    digitalWrite(PUMP_RELAY_1, HIGH);
-    digitalWrite(PUMP_RELAY_2, LOW);
+    si_relay_set(RELAY_PUMP_1, true);
+    si_relay_set(RELAY_PUMP_2, false);
     break;
 
   case PUMPS_SECOND_ACTIVE:
-    digitalWrite(PUMP_RELAY_1, LOW);
-    digitalWrite(PUMP_RELAY_2, HIGH);
+    si_relay_set(RELAY_PUMP_1, false);
+    si_relay_set(RELAY_PUMP_2, true);
     break;
 
   default:
-    Serial.println("unhandeled pump event");
+    LOG_ERR("unhandeled pump event");
     break;
   }
 }

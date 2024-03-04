@@ -12,23 +12,25 @@
 #include <Arduino.h>
 
 #include "control.h"
-#include "led.h"
 #include "scheduler.h"
+#include "si_led.h"
+#include "si_stepper.h"
 #include "sm.h"
 #include "sm_run.h"
 #include "sm_types.h"
-#include "stepper.h"
 
 void sm_run_entry(sm_event_t last_event) {
   Serial.println("Run entry");
 
   // enabling tasks
-  scheduler.enableTask(2, true, true); // encoder task    static Scheduler& getInstance();
-  scheduler.enableTask(4, true, true); // control task    LSched::Scheduler::getInstance().enable;
+  scheduler.enableTask(
+      2, true, true); // encoder task    static Scheduler& getInstance();
+  scheduler.enableTask(
+      4, true, true); // control task LSched::Scheduler::getInstance().enable;
 
   // Setting led colors
-  led_color_1_set(GREEN);
-  led_color_2_set(OFF);
+  si_led_color_1_set(GREEN);
+  si_led_color_2_set(OFF);
 }
 
 void sm_run_exit(void) {
@@ -38,7 +40,7 @@ void sm_run_exit(void) {
   scheduler.enableTask(2, false, false); // encoder task
   scheduler.enableTask(4, false, false); // control task
 
-  stepper_speed_set(0, 0, true);
+  si_stepper_speed_set(0);
   control_process_variable_set(0);
 }
 

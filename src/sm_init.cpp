@@ -12,25 +12,24 @@
 #include <Arduino.h>
 #include <lsched.hpp>
 
-#include "led.h"
+#include "log.h"
 #include "menu.h"
-#include "pins.h"
 #include "scheduler.h"
+#include "si_led.h"
+#include "si_stepper.h"
+#include "si_switch.h"
 #include "sm.h"
 #include "sm_init.h"
 #include "sm_types.h"
-#include "stepper.h"
+
+#define STEPPER_HOME_SPEED (10000)
+#define STEPPER_HOME_MAX_TIME (15000)
 
 bool my_limit_max = false;
 bool my_limit_min = false;
 static init_state_t my_init_state = POWER_UP;
-static int home_speed = 10000;
 static uint32_t init_time = millis();
-static int max_home_time = 15000;
-
-static int my_step = 0;
-static int current_home_step = 0;
-static int current_home_rotation = 0;
+static int my_home_time = 15000;
 
 void sm_init_entry(sm_event_t last_event) {
   Serial.println("Init entry");
@@ -42,51 +41,51 @@ void sm_init_entry(sm_event_t last_event) {
   frame_set(DISPLAY_FRAME_INIT);
 
   // Setting the led color
-  led_color_1_set(GREEN);
-  led_color_2_set(BLUE);
+  si_led_color_1_set(GREEN);
+  si_led_color_2_set(BLUE);
 }
 
 void sm_init_exit(void) {
-  Serial.println("Init exit");
+  LOG_INF("Init exit");
 
   // disabling tasks
 
   // turning the led off
-  led_color_1_set(OFF);
-  led_color_2_set(OFF);
+  si_led_color_1_set(OFF);
+  si_led_color_2_set(OFF);
 
-  stepper_speed_set(0, 0, true);
+  si_stepper_speed_set(0);
 }
 
 void sm_init_periodic(void) {
   switch (my_init_state) {
   case POWER_UP:
     my_init_state = HOME_MIN;
-    Serial.println("Homing min limit");
-    stepper_speed_set(home_speed * -1, 100, false);
+    LOG_INF("Homing min limit");
+    si_stepper_speed_set(-STEPPER_HOME_SPEED);
     init_time = millis();
     break;
 
   case HOME_MIN:
-    if (digitalRead(SW_LIMIT_MIN) == LOW) {
+    if (si_switch_get(SW_LIMIT_MIN)) {
       my_init_state = HOME_MAX;
       Serial.println("Homing max limit");
-      stepper_speed_set(0, 0, true);
-      stepper_speed_set(home_speed, 100, false);
+      si_stepper_speed_set(0);
+      si_stepper_speed_set(STEPPER_HOME_SPEED);
       init_time = millis();
     }
-    if ((millis() - init_time) > max_home_time) {
+    if ((millis() - init_time) > STEPPER_HOME_MAX_TIME) {
       sm_event_send(SM_EVENT_ERROR_INIT);
     }
     break;
 
   case HOME_MAX:
-    if (digitalRead(SW_LIMIT_MAX) == LOW) {
+    if (si_switch_get(SW_LIMIT_MAX)) {
       my_init_state = INIT_FINISH;
       Serial.println("Home complete");
-      stepper_speed_set(0, 0, true);
+      si_stepper_speed_set(0);
     }
-    if ((millis() - init_time) > max_home_time) {
+    if ((millis() - init_time) > STEPPER_HOME_MAX_TIME) {
       sm_event_send(SM_EVENT_ERROR_INIT);
     }
     break;

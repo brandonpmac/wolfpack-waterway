@@ -13,11 +13,11 @@
 
 #include "control.h"
 #include "init.h"
-#include "led.h"
 #include "menu.h"
 #include "shell/shell.h"
+#include "si_led.h"
+#include "si_stepper.h"
 #include "sm.h"
-#include "stepper.h"
 
 /// Configure the scheduler
 #define MAX_TASKS (10)
@@ -40,11 +40,10 @@ void ArduinoTimerTicker() {
 void setup() {
   initialize();
   scheduler.addTask(sm_task, 0, 100, true, true);
-  scheduler.addTask(led_task, 1, 500, true, true);
+  scheduler.addTask(si_led_task, 1, 500, true, true);
   scheduler.addTask(encoder_task, 2, 15, false, false);
   scheduler.addTask(switch_task, 3, 20, true, true);
   scheduler.addTask(control_task, 4, 20, false, false);
-  scheduler.addTask(stepper_task, 5, 100, true, true);
   scheduler.addTask(frame_task, 6, 100, true, true);
   scheduler.addTask(shell_task, 9, 100, true, true);
 }

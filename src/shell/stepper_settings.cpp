@@ -12,7 +12,7 @@
 #include <Arduino.h>
 #include <TMC2209.h>
 
-#include "stepper.h"
+#include "si_stepper.h"
 #include "stepper_driver.h"
 
 int stepper_settings_hndlr(int argc, char **argv) {

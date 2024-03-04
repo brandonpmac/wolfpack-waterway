@@ -17,14 +17,18 @@ add_executable(
 	# Test files
 	sanity_test.cpp
 	test_file_test.cpp
+	control_test.cpp
 
 	# Mock files
 
 	# Application files
 	../src/test_file.cpp
+	../src/control.cpp
 
 )
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../include)
+
+add_compile_definitions(TEST_BUILD)
 
 target_link_libraries(ww_test gtest_main)
 

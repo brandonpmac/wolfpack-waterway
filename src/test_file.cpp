@@ -1,4 +1,5 @@
 int stupidity(int foo) {
-  int bar = 8*foo - 7;
-  return bar;
+  int four = 4;
+  int bar = 8 * foo - 7;
+  return four;
 }

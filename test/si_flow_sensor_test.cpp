@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
-#include "test_file.h"
+#include "si_flow_sensor.h"
 
-TEST(TestFileTest, five_to_33) {
+TEST(SiFlowSensorTest, five_to_33) {
   // Setup
   int result;
 
@@ -13,7 +13,7 @@ TEST(TestFileTest, five_to_33) {
   ASSERT_EQ(result, 33);
 }
 
-TEST(TestFileTest, four_is_four) {
+TEST(SiFlowSensorTest, four_to_33) {
   // Setup
   int result;
 
@@ -21,5 +21,5 @@ TEST(TestFileTest, four_is_four) {
   result = stupidity(4);
 
   // Verify
-  ASSERT_EQ(result, 4);
+  ASSERT_EQ(result, 33);
 }
