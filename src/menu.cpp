@@ -25,7 +25,7 @@ static int my_target = 0;
 static int my_current = 0;
 static bool my_max_limit = false;
 static bool my_min_limit = false;
-static pump_enum_t my_pump_status = PUMPS_BOTH_OFF;
+static pump_enum_t my_pump_status = PUMPS_NONE_ACTIVE;
 static bool update_display[4] = {false, false, false, false};
 
 String pump_1_status = "OFF";
@@ -156,7 +156,7 @@ static void populate_display_frame(display_frame_t frame) {
         pump_2_status = "ON ";
         break;
 
-      case PUMPS_BOTH_OFF:
+      case PUMPS_NONE_ACTIVE:
         pump_1_status = "OFF";
         pump_2_status = "OFF";
         break;

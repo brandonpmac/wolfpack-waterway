@@ -12,14 +12,4 @@
 #include <gtest/gtest.h>
 
 #include "control.h"
-
-TEST(SiFlowSensorTest, four_to_33) {
-  // Setup
-  int result;
-
-  // Act
-  result = stupidity(4);
-
-  // Verify
-  ASSERT_EQ(result, 33);
-}
+#include "mock/mock_si_switch.h"

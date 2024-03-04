@@ -14,7 +14,7 @@
 
 typedef enum {
   PUMPS_BOTH_ACTIVE,
-  PUMPS_BOTH_OFF,
+  PUMPS_NONE_ACTIVE,
   PUMPS_FIRST_ACTIVE,
   PUMPS_SECOND_ACTIVE,
 } pump_enum_t;
@@ -38,5 +38,11 @@ void ISR_flow_sensor_2_SIGNAL(void);
 // tasks
 void control_task(void);
 void switch_task(void);
+
+#ifdef TEST_BUILD
+
+void pump_status_set(pump_enum_t status);
+
+#endif // TEST_BUILD
 
 #endif // CONTROL_H

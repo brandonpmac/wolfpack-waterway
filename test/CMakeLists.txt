@@ -16,10 +16,11 @@ add_executable(
 	
 	# Test files
 	sanity_test.cpp
-	test_file_test.cpp
 	control_test.cpp
 
 	# Mock files
+	mock/mock_si_switch.cpp
+	mock/mock_si_relay.cpp
 
 	# Application files
 	../src/test_file.cpp
