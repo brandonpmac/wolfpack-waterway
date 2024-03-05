@@ -17,6 +17,9 @@ typedef enum {
   PUMPS_NONE_ACTIVE,
   PUMPS_FIRST_ACTIVE,
   PUMPS_SECOND_ACTIVE,
+
+  PUMPS_ACTIVE_CNT,
+  PUMPS_ERROR = PUMPS_ACTIVE_CNT,
 } pump_enum_t;
 
 // getters

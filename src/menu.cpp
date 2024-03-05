@@ -21,7 +21,7 @@
 // variables
 static int encoder_increment = 5;
 
-static int my_target = 0;
+static int my_tunnel_speed = 0;
 static int my_current = 0;
 static bool my_max_limit = false;
 static bool my_min_limit = false;
@@ -115,9 +115,9 @@ static void populate_display_frame(display_frame_t frame) {
     bool new_min_limit = limit_min_get();
     pump_enum_t new_pump_status = pump_status_get();
 
-    if (new_target != my_target) {
+    if (new_target != my_tunnel_speed) {
       update_display[0] = true;
-      my_target = new_target;
+      my_tunnel_speed = new_target;
     }
 
     if (new_current != my_current) {
@@ -174,7 +174,7 @@ static void populate_display_frame(display_frame_t frame) {
     }
 
     if (si_lcd_update_get(LCD_LINE_1)) {
-      sprintf(&buffer[0][0], "Target :   %04d mm/s", my_target);
+      sprintf(&buffer[0][0], "Target :   %04d mm/s", my_tunnel_speed);
       si_lcd_line_set(LCD_LINE_1, buffer[LCD_LINE_1]);
     }
 

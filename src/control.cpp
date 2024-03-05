@@ -19,12 +19,14 @@
 #include "sm.h"
 
 #define FLOW_CORRECTION_FACTOR (2)
-#define PUMP_TRIGGER_ON (250)
-#define PUMP_TRIGGER_OFF (125)
+#define PUMP_TRIGGER_BOTH (250)
+#define PUMP_TRIGGER_SINGLE (125)
+#define PUMP_TRIGGER_OFF (5)
 
 // limit switch variables
 static bool my_sw_limit_max = false;
 static bool my_sw_limit_min = false;
+static bool my_sw_run = false;
 
 // pump variables
 static bool pump_single_switch =
@@ -33,43 +35,19 @@ static bool pump_single_switch =
 // flow sensor variables
 static int flow_sensor_1_count = 0;
 static int flow_sensor_2_count = 0;
-static int flow_rate_1;
-static int flow_rate_2;
 
 // control variables
-static bool my_sw_run = false;
 static int my_setpoint = 0;
-static int control_process_variable = 0;
+static int my_tunnel_speed = 0;
 static pump_enum_t pump_status = PUMPS_NONE_ACTIVE;
 
 // function declarations
-static void single_pump(void);
-static void pump_status_check(void);
+static pump_enum_t pump_check(pump_enum_t status);
 static void pump_control(void);
 
 // tasks
 /// @brief control loop
 void control_task(void) {}
-
-pump_enum_t pump_status_get(void) { return pump_status; }
-int control_setpoint_get(void) { return my_setpoint; }
-int control_process_variable_get(void) { return control_process_variable; }
-bool limit_max_get(void) { return my_sw_limit_max; }
-bool limit_min_get(void) { return my_sw_limit_min; }
-bool control_active_get(void) { return my_sw_run; }
-
-// setters
-void control_setpoint_set(int new_control_setpoint) {
-  my_setpoint = new_control_setpoint;
-}
-
-void control_process_variable_set(int new_process_variable) {
-  control_process_variable = new_process_variable;
-}
-
-int flow_rate_calc(int flow_count) {
-  return (flow_count * FLOW_CORRECTION_FACTOR);
-}
 
 void switch_task(void) {
   // checking the min limit switch
@@ -92,65 +70,61 @@ void switch_task(void) {
   } else {
     my_sw_run = false;
   }
-
-  pump_status_check();
-  // controlling the water tunnel
-  pump_control();
 }
 
-/// @brief logic to control which pump turns off when only one pump is needed
-/// @param
-static void single_pump(void) {
-  // if the first pump was last off, set second to last off
-  if (pump_single_switch) {
-    pump_status = PUMPS_FIRST_ACTIVE;
-    // if the second pump was the last off, set the first to last off
-  } else {
-    pump_status = PUMPS_SECOND_ACTIVE;
+pump_enum_t pump_status_get(void) { return pump_status; }
+int control_setpoint_get(void) { return my_setpoint; }
+int control_tunnel_speed_get(void) { return my_tunnel_speed; }
+bool limit_max_get(void) { return my_sw_limit_max; }
+bool limit_min_get(void) { return my_sw_limit_min; }
+bool control_active_get(void) { return my_sw_run; }
+
+void control_tunnel_setpoint_set(int new_setpoint) {
+  my_setpoint = new_setpoint;
+}
+
+int flow_rate_calc(int flow_count) {
+  return (flow_count * FLOW_CORRECTION_FACTOR);
+}
+
+static pump_enum_t pump_check(pump_enum_t status) {
+  // Check to see if pumps should shut off
+  if (!my_sw_run) {
+    return PUMPS_NONE_ACTIVE;
+  } else if (my_setpoint <= PUMP_TRIGGER_OFF) {
+    return PUMPS_NONE_ACTIVE;
   }
-  pump_single_switch = !pump_single_switch;
-}
 
-/// @brief checking the current status of the pumps and changing variables when
-/// nessecary
-static void pump_status_check(void) {
-  if (si_switch_get(SW_RUN)) {
-    switch (pump_status) {
-    case PUMPS_NONE_ACTIVE:
-      if (my_setpoint > PUMP_TRIGGER_ON) {
-        pump_status = PUMPS_BOTH_ACTIVE;
-        LOG_INF("Both pumps on");
+  switch (status) {
+  case PUMPS_NONE_ACTIVE:
+  case PUMPS_BOTH_ACTIVE:
+    if (my_setpoint <= PUMP_TRIGGER_SINGLE) {
+      if (pump_single_switch) {
+        pump_single_switch = !pump_single_switch;
+        return PUMPS_FIRST_ACTIVE;
+        // if the second pump was the last off, set the first to last off
       } else {
-        single_pump();
+        pump_single_switch = !pump_single_switch;
+        return PUMPS_SECOND_ACTIVE;
       }
-      break;
-
-    case PUMPS_BOTH_ACTIVE:
-      if (my_setpoint < PUMP_TRIGGER_OFF) {
-        single_pump();
-      }
-      break;
-
-    case PUMPS_FIRST_ACTIVE:
-      if (my_setpoint > PUMP_TRIGGER_ON) {
-        pump_status = PUMPS_BOTH_ACTIVE;
-        LOG_INF("First Pump On");
-      }
-      break;
-
-    case PUMPS_SECOND_ACTIVE:
-      if (my_setpoint > PUMP_TRIGGER_ON) {
-        pump_status = PUMPS_BOTH_ACTIVE;
-      }
-      break;
-
-    default:
-      LOG_ERR("unhandeled pump status");
-      pump_status = PUMPS_NONE_ACTIVE;
     }
-  } else {
-    pump_status = PUMPS_NONE_ACTIVE;
+    return PUMPS_BOTH_ACTIVE;
+    break;
+
+  // Single pump mode check
+  case PUMPS_FIRST_ACTIVE:
+  case PUMPS_SECOND_ACTIVE:
+    if (my_setpoint >= PUMP_TRIGGER_BOTH) {
+      return PUMPS_BOTH_ACTIVE;
+    }
+    return status;
+    break;
+
+  default:
+    return PUMPS_NONE_ACTIVE;
   }
+  LOG_ERR("Unhandled Pump Case")
+  return PUMPS_ERROR;
 }
 
 static void pump_control(void) {
@@ -190,224 +164,208 @@ void pump_status_set(pump_enum_t status) { pump_status = status; }
 
 // Pump Status Check ------------------------------------------------
 
-TEST(Control_PumpStatusCheck, both_to_both) {
+TEST(CTRL_PumpStatusCheck, both_above_trigger_both) {
   // Setup
   pump_enum_t result;
-
-  pump_status_set(PUMPS_BOTH_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, true);
-  my_setpoint = PUMP_TRIGGER_ON + 1;
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_BOTH + 1;
 
   // Act
-  pump_status_check();
-  result = pump_status_get();
+  result = pump_check(PUMPS_BOTH_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_BOTH_ACTIVE);
 }
 
-TEST(Control_PumpStatusCheck, both_to_off) {
+TEST(CTRL_PumpStatusCheck, both_below_trigger_both) {
   // Setup
   pump_enum_t result;
-
-  pump_status_set(PUMPS_BOTH_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, false);
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_BOTH - 1;
 
   // Act
-  pump_status_check();
-  result = pump_status_get();
+  result = pump_check(PUMPS_BOTH_ACTIVE);
+
+  // Verify
+  ASSERT_EQ(result, PUMPS_BOTH_ACTIVE);
+}
+
+TEST(CTRL_PumpStatusCheck, both_to_off) {
+  // Setup
+  pump_enum_t result;
+  my_sw_run = false;
+
+  // Act
+  result = pump_check(PUMPS_BOTH_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_NONE_ACTIVE);
 }
 
-TEST(Control_PumpStatusCheck, both_to_first) {
+TEST(CTRL_PumpStatusCheck, both_below_trigger_off) {
+  // Setup
+  pump_enum_t result;
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_OFF;
+
+  // Act
+  result = pump_check(PUMPS_BOTH_ACTIVE);
+
+  // Verify
+  ASSERT_EQ(result, PUMPS_NONE_ACTIVE);
+}
+
+TEST(CTRL_PumpStatusCheck, both_to_first) {
   // Setup
   pump_enum_t result;
 
-  pump_status_set(PUMPS_BOTH_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, true);
-  my_setpoint = PUMP_TRIGGER_OFF - 1;
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_SINGLE - 1;
   pump_single_switch = true;
 
   // Act
-  pump_status_check();
-  result = pump_status_get();
+  result = pump_check(PUMPS_BOTH_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_FIRST_ACTIVE);
 }
 
-TEST(Control_PumpStatusCheck, both_to_second) {
+TEST(CTRL_PumpStatusCheck, both_to_second) {
   // Setup
   pump_enum_t result;
 
-  pump_status_set(PUMPS_BOTH_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, true);
-  my_setpoint = PUMP_TRIGGER_OFF - 1;
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_SINGLE - 1;
   pump_single_switch = false;
 
   // Act
-  pump_status_check();
-  result = pump_status_get();
+  result = pump_check(PUMPS_BOTH_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_SECOND_ACTIVE);
 }
 
-TEST(Control_PumpStatusCheck, first_to_both) {
+TEST(CTRL_PumpStatusCheck, first_to_both) {
   // Setup
   pump_enum_t result;
 
   pump_status_set(PUMPS_FIRST_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, true);
-  my_setpoint = PUMP_TRIGGER_ON + 1;
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_BOTH + 1;
 
   // Act
-  pump_status_check();
-  result = pump_status_get();
+  result = pump_check(PUMPS_FIRST_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_BOTH_ACTIVE);
 }
 
-TEST(Control_PumpStatusCheck, first_to_off) {
+TEST(CTRL_PumpStatusCheck, first_to_first) {
   // Setup
   pump_enum_t result;
-
-  pump_status_set(PUMPS_FIRST_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, false);
-
-  // Act
-  pump_status_check();
-  result = pump_status_get();
-
-  // Verify
-  ASSERT_EQ(result, PUMPS_NONE_ACTIVE);
-}
-
-TEST(Control_PumpStatusCheck, off_to_both) {
-  // Setup
-  pump_enum_t result;
-
-  pump_status_set(PUMPS_NONE_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, true);
-  my_setpoint = PUMP_TRIGGER_ON + 1;
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_BOTH - 1;
 
   // Act
-  pump_status_check();
-  result = pump_status_get();
-
-  // Verify
-  ASSERT_EQ(result, PUMPS_BOTH_ACTIVE);
-}
-
-TEST(Control_PumpStatusCheck, off_to_first) {
-  // Setup
-  pump_enum_t result;
-
-  pump_status_set(PUMPS_BOTH_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, true);
-  my_setpoint = PUMP_TRIGGER_OFF - 1;
-  pump_single_switch = true;
-
-  // Act
-  pump_status_check();
-  result = pump_status_get();
+  result = pump_check(PUMPS_FIRST_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_FIRST_ACTIVE);
 }
 
-TEST(Control_PumpStatusCheck, off_to_off) {
+TEST(CTRL_PumpStatusCheck, first_to_off) {
   // Setup
   pump_enum_t result;
-
-  pump_status_set(PUMPS_NONE_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, false);
+  my_sw_run = false;
 
   // Act
-  pump_status_check();
-  result = pump_status_get();
+  result = pump_check(PUMPS_FIRST_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_NONE_ACTIVE);
 }
 
-TEST(Control_PumpStatusCheck, off_to_second) {
+TEST(CTRL_PumpStatusCheck, off_to_both) {
   // Setup
   pump_enum_t result;
-
-  pump_status_set(PUMPS_BOTH_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, true);
-  my_setpoint = PUMP_TRIGGER_OFF - 1;
-  pump_single_switch = false;
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_BOTH + 1;
 
   // Act
-  pump_status_check();
-  result = pump_status_get();
-
-  // Verify
-  ASSERT_EQ(result, PUMPS_SECOND_ACTIVE);
-}
-
-TEST(Control_PumpStatusCheck, second_to_both) {
-  // Setup
-  pump_enum_t result;
-
-  pump_status_set(PUMPS_SECOND_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, true);
-  my_setpoint = PUMP_TRIGGER_ON + 1;
-
-  // Act
-  pump_status_check();
-  result = pump_status_get();
+  result = pump_check(PUMPS_NONE_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_BOTH_ACTIVE);
 }
 
-TEST(Control_PumpStatusCheck, second_to_off) {
+TEST(CTRL_PumpStatusCheck, off_to_first) {
   // Setup
   pump_enum_t result;
 
-  pump_status_set(PUMPS_SECOND_ACTIVE);
-  si_encoder_switch_mock_set_value(SW_RUN, false);
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_SINGLE - 1;
+  pump_single_switch = true;
 
   // Act
-  pump_status_check();
-  result = pump_status_get();
+  result = pump_check(PUMPS_NONE_ACTIVE);
+
+  // Verify
+  ASSERT_EQ(result, PUMPS_FIRST_ACTIVE);
+}
+
+TEST(CTRL_PumpStatusCheck, off_to_off) {
+  // Setup
+  pump_enum_t result;
+  my_sw_run = false;
+
+  // Act
+  result = pump_check(PUMPS_NONE_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_NONE_ACTIVE);
 }
 
-// SINGLE PUMP CHECK ------------------------------------------------
-
-TEST(Control_SinglePumpTest, first_to_second) {
+TEST(CTRL_PumpStatusCheck, off_to_second) {
   // Setup
   pump_enum_t result;
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_SINGLE - 1;
   pump_single_switch = false;
 
   // Act
-  single_pump();
-  result = pump_status_get();
+  result = pump_check(PUMPS_NONE_ACTIVE);
 
   // Verify
   ASSERT_EQ(result, PUMPS_SECOND_ACTIVE);
 }
 
-TEST(Control_SinglePumpTest, second_to_first) {
+TEST(CTRL_PumpStatusCheck, second_to_both) {
   // Setup
   pump_enum_t result;
-  pump_single_switch = true;
+
+  pump_status_set(PUMPS_SECOND_ACTIVE);
+  my_sw_run = true;
+  my_setpoint = PUMP_TRIGGER_BOTH + 1;
 
   // Act
-  single_pump();
-  result = pump_status_get();
+  result = pump_check(PUMPS_SECOND_ACTIVE);
 
   // Verify
-  ASSERT_EQ(result, PUMPS_FIRST_ACTIVE);
+  ASSERT_EQ(result, PUMPS_BOTH_ACTIVE);
+}
+
+TEST(CTRL_PumpStatusCheck, second_to_off) {
+  // Setup
+  pump_enum_t result;
+
+  pump_status_set(PUMPS_SECOND_ACTIVE);
+  my_sw_run = false;
+
+  // Act
+  result = pump_check(PUMPS_SECOND_ACTIVE);
+
+  // Verify
+  ASSERT_EQ(result, PUMPS_NONE_ACTIVE);
 }
 
 #endif // TEST_BUILD
