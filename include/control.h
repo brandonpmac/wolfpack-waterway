@@ -12,6 +12,8 @@
 #ifndef CONTROL_H
 #define CONTROL_H
 
+#include <stdint.h>
+
 typedef enum {
   PUMPS_BOTH_ACTIVE,
   PUMPS_NONE_ACTIVE,
@@ -24,15 +26,17 @@ typedef enum {
 
 // getters
 pump_enum_t pump_status_get(void);
-int control_setpoint_get(void);
-int control_process_variable_get(void);
-bool limit_max_get(void);
-bool limit_min_get(void);
-bool control_active_get(void);
+uint16_t tunnel_setpoint_get(void);
+uint16_t tunnel_speed_get(void);
+bool sw_limit_max_get(void);
+bool sw_limit_min_get(void);
+bool relay_pump_1_get(void);
+bool relay_pump_2_get(void);
+bool sw_run_get(void);
 
 // setters
-void control_setpoint_set(int);
-void control_process_variable_set(int);
+void tunnel_setpoint_set(uint16_t new_setpoint);
+void encoder_vent_get();
 
 // interupts
 void ISR_flow_sensor_1_SIGNAL(void);

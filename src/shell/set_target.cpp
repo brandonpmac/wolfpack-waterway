@@ -16,6 +16,6 @@
 #include "menu.h"
 
 int set_target_hndlr(int argc, char **argv) {
-  Serial.println(control_setpoint_get());
+  Serial.println(tunnel_setpoint_get());
   return EXIT_SUCCESS;
 }

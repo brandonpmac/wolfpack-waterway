@@ -12,10 +12,12 @@
 #ifndef SI_LCD_H
 #define SI_LCD_H
 
+#ifndef TEST_BUILD
 #include <LiquidCrystal_I2C.h>
-#include <stdint.h>
-
 extern LiquidCrystal_I2C lcd;
+#endif // TEST_BUILD
+
+#include <stdint.h>
 
 typedef enum {
   LCD_LINE_1,
@@ -26,13 +28,6 @@ typedef enum {
   LCD_LINE_CNT,
 } si_lcd_line_t;
 
-void si_lcd_update_set(si_lcd_line_t lcd_line);
-
-// Plan to remove when i change logic to set values
-bool si_lcd_update_get(si_lcd_line_t lcd_line);
-
-void si_lcd_line_set(si_lcd_line_t lcd_line, char* new_line);
-
-void si_lcd_write(void);
+void si_lcd_write(si_lcd_line_t row, const char *new_line);
 
 #endif // SI_LCD_H

@@ -16,6 +16,6 @@
 
 bool si_switch_get(si_switch_t sw);
 
-void si_encoder_switch_mock_set_value(si_switch_t sw, bool status);
+void si_switch_mock_set_value(si_switch_t sw, bool status);
 
 #endif // MOCK_SI_SWITCH_H

@@ -14,6 +14,8 @@
 
 #include "si_encoder.h"
 
+si_encoder_event_t si_encoder_event_get(void);
+
 void si_encoder_event_mock_set_value(si_encoder_event_t event);
 
 #endif // MOCK_SI_ENCODER_H

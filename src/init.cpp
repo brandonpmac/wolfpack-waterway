@@ -15,13 +15,13 @@
 #include <lsched.hpp>
 
 #include "control.h"
-#include "lcd.h"
 #include "log.h"
 #include "menu.h"
 #include "pins.h"
 #include "shell/shell.h"
 #include "si_encoder.h"
 #include "si_flow_sensor.h"
+#include "si_lcd.h"
 #include "sm.h"
 #include "stepper_driver.h"
 

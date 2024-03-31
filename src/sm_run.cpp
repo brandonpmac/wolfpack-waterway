@@ -41,11 +41,10 @@ void sm_run_exit(void) {
   scheduler.enableTask(4, false, false); // control task
 
   si_stepper_speed_set(0);
-  control_process_variable_set(0);
 }
 
 void sm_run_periodic(void) {
-  if (!control_active_get()) {
+  if (!sw_run_get()) {
     sm_event_send(SM_EVENT_IDLE);
   }
 }
