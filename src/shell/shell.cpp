@@ -16,6 +16,7 @@
 /// @brief initializing the functions for the shell
 void shell_init(void) {
   shell.addCommand(F("set_target"), set_target_hndlr);
+  shell.addCommand(F("set_speed"), set_speed_hndlr);
   shell.addCommand(F("stepper_settings"), stepper_settings_hndlr);
 }
 

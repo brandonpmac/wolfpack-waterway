@@ -23,7 +23,7 @@
 #include "sm_types.h"
 
 #define STEPPER_HOME_SPEED (5000)
-#define STEPPER_HOME_MAX_TIME (2000)
+#define STEPPER_HOME_MAX_TIME (10000)
 
 bool my_limit_max = false;
 bool my_limit_min = false;

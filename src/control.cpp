@@ -22,7 +22,6 @@
 #include "si_switch.h"
 #include "sm.h"
 
-#define FLOW_CORRECTION_FACTOR (22) // 21.5278208334
 #define PUMP_TRIGGER_BOTH (250)
 #define PUMP_TRIGGER_SINGLE (125)
 #define PUMP_TRIGGER_OFF (5)
@@ -37,6 +36,8 @@ static bool pump_single_switch =
 // flow sensor variables
 static int flow_sensor_1_count = 0;
 static int flow_sensor_2_count = 0;
+static uint32_t flow_time = 0;
+static uint32_t flow_correction_factor = 220; // 21.5278208334
 
 // switch variables
 static bool my_sw_limit_max = false;
@@ -47,17 +48,22 @@ static bool my_sw_run = false;
 static int my_tunnel_setpoint = 0;
 static int my_tunnel_speed = 0;
 static pump_enum_t my_pump_status = PUMPS_NONE_ACTIVE;
+static bool my_speed_override = false;
+static uint16_t my_override_value = 0;
 
 // PID Variables
 
 // function declarations
 static pump_enum_t pump_check(pump_enum_t status);
 static void pump_control(void);
-static int flow_rate_calc(int);
+static uint32_t flow_rate_calc();
 
 // tasks
 /// @brief control loop
-void control_task(void) { static int32_t my_current_value = my_tunnel_speed; }
+void control_task(void) {
+  my_tunnel_speed = flow_rate_calc();
+  display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
+}
 
 void encoder_task(void) {
   si_encoder_event_t event = si_encoder_event_get();
@@ -103,14 +109,23 @@ void switch_task(void) {
     my_sw_run = !my_sw_run;
   }
 
-  static uint32_t new_tunnel_speed =
-      flow_rate_calc(flow_sensor_1_count + flow_sensor_2_count);
-  flow_sensor_1_count = 0;
-  flow_sensor_2_count = 0;
-  if (new_tunnel_speed != my_tunnel_speed) {
-    display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
-    my_tunnel_speed = new_tunnel_speed;
+  // Check the flowrate
+  // if (my_speed_override) {
+  //   my_tunnel_speed = my_override_value;
+  // } else {
+  //   static uint16_t new_tunnel_speed = flow_rate_calc();
+  //   if (new_tunnel_speed != my_tunnel_speed) {
+  //     my_tunnel_speed = new_tunnel_speed;
+  //     display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
+  //   }
+  // }
+  display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
+
+  pump_enum_t new_pump_status = pump_check(my_pump_status);
+  if (new_pump_status != my_pump_status) {
+    my_pump_status = new_pump_status;
   }
+  pump_control();
 }
 
 bool relay_pump_1_get(void) {
@@ -163,17 +178,35 @@ void tunnel_setpoint_set(uint16_t new_setpoint) {
   my_tunnel_setpoint = new_setpoint;
 }
 
-int flow_rate_calc(int flow_count) {
-  static uint32_t flow_time;
-  uint32_t time = millis();
-  return (flow_count * FLOW_CORRECTION_FACTOR);
+uint32_t flow_rate_calc() {
+  flow_sensor_1_count = si_flow_sensor_rate_get(FLOW_SENSOR_1);
+  flow_sensor_2_count = si_flow_sensor_rate_get(FLOW_SENSOR_2);
+  uint32_t flow_count = (flow_sensor_1_count + flow_sensor_2_count) * 10;
+  uint32_t flow_speed = (flow_count);
+  // if (my_speed_override) {
+  //   flow_speed = my_override_value;
+  // }
+  return flow_speed;
+}
+
+void tunnel_speed_set(bool override, uint16_t new_speed) {
+  if (override) {
+    my_speed_override = true;
+    my_override_value = new_speed;
+  } else {
+    my_speed_override = false;
+  }
 }
 
 static pump_enum_t pump_check(pump_enum_t status) {
   // Check to see if pumps should shut off
   if (!my_sw_run) {
+    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
+    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
     return PUMPS_NONE_ACTIVE;
   } else if (my_tunnel_setpoint <= PUMP_TRIGGER_OFF) {
+    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
+    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
     return PUMPS_NONE_ACTIVE;
   }
 
@@ -183,13 +216,17 @@ static pump_enum_t pump_check(pump_enum_t status) {
     if (my_tunnel_setpoint <= PUMP_TRIGGER_SINGLE) {
       if (pump_single_switch) {
         pump_single_switch = !pump_single_switch;
+        display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
         return PUMPS_FIRST_ACTIVE;
         // if the second pump was the last off, set the first to last off
       } else {
         pump_single_switch = !pump_single_switch;
+        display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
         return PUMPS_SECOND_ACTIVE;
       }
     }
+    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
+    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
     return PUMPS_BOTH_ACTIVE;
     break;
 
@@ -197,12 +234,16 @@ static pump_enum_t pump_check(pump_enum_t status) {
   case PUMPS_FIRST_ACTIVE:
   case PUMPS_SECOND_ACTIVE:
     if (my_tunnel_setpoint >= PUMP_TRIGGER_BOTH) {
+      display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
+      display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
       return PUMPS_BOTH_ACTIVE;
     }
     return status;
     break;
 
   default:
+    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
+    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
     return PUMPS_NONE_ACTIVE;
   }
   LOG_ERR("Unhandled Pump Case")

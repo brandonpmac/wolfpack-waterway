@@ -33,6 +33,7 @@ bool sw_limit_min_get(void);
 bool relay_pump_1_get(void);
 bool relay_pump_2_get(void);
 bool sw_run_get(void);
+void tunnel_speed_set(bool, uint16_t);
 
 // setters
 void tunnel_setpoint_set(uint16_t new_setpoint);

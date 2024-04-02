@@ -26,6 +26,7 @@ void sm_idle_entry(sm_event_t last_event) {
   // enabling required tasks
   scheduler.enableTask(2, true, true); // encoder task
   scheduler.enableTask(3, true, true); // switch task
+  scheduler.enableTask(4, true, true); // switch task
 
   // setting let color
   si_led_color_1_set(BLUE);
@@ -41,6 +42,7 @@ void sm_idle_exit(void) {
 
   scheduler.enableTask(2, false, false); // encoder task
   scheduler.enableTask(3, false, false); // switch task
+  scheduler.enableTask(4, true, true); // switch task
 }
 
 void sm_idle_periodic(void) {
