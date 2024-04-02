@@ -25,6 +25,7 @@ void sm_run_entry(sm_event_t last_event) {
   // enabling tasks
   scheduler.enableTask(
       2, true, true); // encoder task    static Scheduler& getInstance();
+  scheduler.enableTask(3, true, true); // encoder task
   scheduler.enableTask(
       4, true, true); // control task LSched::Scheduler::getInstance().enable;
 
@@ -38,6 +39,7 @@ void sm_run_exit(void) {
 
   // disabling tasks
   scheduler.enableTask(2, false, false); // encoder task
+  scheduler.enableTask(3, false, false); // encoder task
   scheduler.enableTask(4, false, false); // control task
 
   si_stepper_speed_set(0);

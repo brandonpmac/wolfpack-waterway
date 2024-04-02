@@ -22,14 +22,13 @@
 #include "sm_init.h"
 #include "sm_types.h"
 
-#define STEPPER_HOME_SPEED (10000)
-#define STEPPER_HOME_MAX_TIME (15000)
+#define STEPPER_HOME_SPEED (5000)
+#define STEPPER_HOME_MAX_TIME (2000)
 
 bool my_limit_max = false;
 bool my_limit_min = false;
 static init_state_t my_init_state = POWER_UP;
 static uint32_t init_time = millis();
-static int my_home_time = 15000;
 
 void sm_init_entry(sm_event_t last_event) {
   Serial.println("Init entry");
@@ -62,7 +61,7 @@ void sm_init_periodic(void) {
   case POWER_UP:
     my_init_state = HOME_MIN;
     LOG_INF("Homing min limit");
-    si_stepper_speed_set(-STEPPER_HOME_SPEED);
+    si_stepper_speed_set(STEPPER_HOME_SPEED);
     init_time = millis();
     break;
 
@@ -71,8 +70,10 @@ void sm_init_periodic(void) {
       my_init_state = HOME_MAX;
       Serial.println("Homing max limit");
       si_stepper_speed_set(0);
-      si_stepper_speed_set(STEPPER_HOME_SPEED);
+      si_stepper_speed_set(-STEPPER_HOME_SPEED);
       init_time = millis();
+    } else if (si_switch_get(SW_LIMIT_MAX)) {
+      sm_event_send(SM_EVENT_ERROR_INIT);
     }
     if ((millis() - init_time) > STEPPER_HOME_MAX_TIME) {
       sm_event_send(SM_EVENT_ERROR_INIT);

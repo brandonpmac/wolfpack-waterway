@@ -8,6 +8,7 @@
  * Mechanical Engineering Senior Design, Water Tunnel, Group 5
  */
 
+#include <Arduino.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -21,7 +22,7 @@
 #include "si_switch.h"
 #include "sm.h"
 
-#define FLOW_CORRECTION_FACTOR (2)
+#define FLOW_CORRECTION_FACTOR (22) // 21.5278208334
 #define PUMP_TRIGGER_BOTH (250)
 #define PUMP_TRIGGER_SINGLE (125)
 #define PUMP_TRIGGER_OFF (5)
@@ -47,13 +48,16 @@ static int my_tunnel_setpoint = 0;
 static int my_tunnel_speed = 0;
 static pump_enum_t my_pump_status = PUMPS_NONE_ACTIVE;
 
+// PID Variables
+
 // function declarations
 static pump_enum_t pump_check(pump_enum_t status);
 static void pump_control(void);
+static int flow_rate_calc(int);
 
 // tasks
 /// @brief control loop
-void control_task(void) {}
+void control_task(void) { static int32_t my_current_value = my_tunnel_speed; }
 
 void encoder_task(void) {
   si_encoder_event_t event = si_encoder_event_get();
@@ -66,6 +70,7 @@ void encoder_task(void) {
       break;
     }
     tunnel_setpoint_set(tunnel_setpoint_get() - ENCODER_INCREMENT);
+    display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SETPOINT);
     break;
 
   case ENCODER_EVENT_RIGHT:
@@ -73,6 +78,7 @@ void encoder_task(void) {
       break;
     }
     tunnel_setpoint_set(tunnel_setpoint_get() + ENCODER_INCREMENT);
+    display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SETPOINT);
     break;
 
   default:
@@ -95,6 +101,15 @@ void switch_task(void) {
   // check if the control switch is flipped
   if (si_switch_get(SW_RUN) != my_sw_run) {
     my_sw_run = !my_sw_run;
+  }
+
+  static uint32_t new_tunnel_speed =
+      flow_rate_calc(flow_sensor_1_count + flow_sensor_2_count);
+  flow_sensor_1_count = 0;
+  flow_sensor_2_count = 0;
+  if (new_tunnel_speed != my_tunnel_speed) {
+    display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
+    my_tunnel_speed = new_tunnel_speed;
   }
 }
 
@@ -149,6 +164,8 @@ void tunnel_setpoint_set(uint16_t new_setpoint) {
 }
 
 int flow_rate_calc(int flow_count) {
+  static uint32_t flow_time;
+  uint32_t time = millis();
   return (flow_count * FLOW_CORRECTION_FACTOR);
 }
 

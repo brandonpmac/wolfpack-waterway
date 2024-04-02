@@ -81,31 +81,56 @@ static void frame_write_new(display_frame_t frame) {
   }
 }
 
+/// @brief task which updates the menu. Only updates in new data was sent.
 void frame_task() {
   if (update_display[0]) {
-    snprintf(buffer[0], 20, "Target :   %04d mm/s", my_tunnel_setpoint);
+    my_tunnel_setpoint = tunnel_setpoint_get();
+    snprintf(buffer[0], 21, "Target :   %04d mm/s", my_tunnel_setpoint);
     si_lcd_write(LCD_LINE_1, buffer[0]);
   }
 
   if (update_display[1]) {
-    snprintf(buffer[1], 20, "Current:   %04d mm/s", my_tunnel_speed);
+    my_tunnel_speed = tunnel_speed_get();
+    snprintf(buffer[1], 21, "Current:   %04d mm/s", my_tunnel_speed);
     si_lcd_write(LCD_LINE_2, buffer[1]);
   }
 
   if (update_display[2]) {
-    snprintf(buffer[2], 20, "Pump1: %s | Max: %c ", my_relay_pump_1,
-             my_sw_limit_min);
+    if (my_relay_pump_1) {
+      if (my_sw_limit_max) {
+        snprintf(buffer[2], 21, "Pump1: ON  | Max:   ");
+      } else {
+        snprintf(buffer[2], 21, "Pump1: ON  | Max: X ");
+      }
+    } else {
+      if (my_sw_limit_max) {
+        snprintf(buffer[2], 21, "Pump1: OFF | Max:   ");
+      } else {
+        snprintf(buffer[2], 21, "Pump1: OFF | Max: X ");
+      }
+    }
     si_lcd_write(LCD_LINE_3, buffer[2]);
   }
 
   if (update_display[3]) {
-    static char my_line_4[21];
-    snprintf(my_line_4, 20, "Pump2: %s | Min: %c ", my_relay_pump_2,
-             my_sw_limit_min);
-    si_lcd_write(LCD_LINE_3, buffer[3]);
+    if (my_relay_pump_2) {
+      if (my_sw_limit_min) {
+        snprintf(buffer[3], 21, "Pump2: ON  | Min:   ");
+      } else {
+        snprintf(buffer[3], 21, "Pump2: ON  | Min: X ");
+      }
+    } else {
+      if (my_sw_limit_min) {
+        snprintf(buffer[3], 21, "Pump2: OFF | Min:   ");
+      } else {
+        snprintf(buffer[3], 21, "Pump2: OFF | Min: X ");
+      }
+    }
+    si_lcd_write(LCD_LINE_4, buffer[3]);
   }
 }
 
+/// @brief tells the system to update every line in the frame
 static void frame_write() {
   for (int i = 0; i == LCD_LINE_CNT; i++) {
     if (update_display[i]) {
@@ -114,6 +139,8 @@ static void frame_write() {
   }
 }
 
+/// @brief allows other files to send update notifications to the menu
+/// @param notification specifies which notification was sent
 void display_notification_send(display_notification_t notification) {
   switch (notification) {
   case DISPLAY_NOTIFICATION_TUNNEL_SETPOINT:
@@ -128,12 +155,12 @@ void display_notification_send(display_notification_t notification) {
 
   case DISPLAY_NOTIFICATION_SW_LIMIT_MIN:
     my_sw_limit_min = sw_limit_min_get();
-    update_display[2] = true;
+    update_display[3] = true;
     break;
 
   case DISPLAY_NOTIFICATION_SW_LIMIT_MAX:
     my_sw_limit_max = sw_limit_max_get();
-    update_display[3] = true;
+    update_display[2] = true;
     break;
 
   case DISPLAY_NOTIFICATION_RELAY_PUMP_1:
@@ -144,6 +171,10 @@ void display_notification_send(display_notification_t notification) {
   case DISPLAY_NOTIFICATION_RELAY_PUMP_2:
     my_relay_pump_2 = relay_pump_2_get();
     update_display[3] = true;
+    break;
+
+  default:
+
     break;
   }
 }
