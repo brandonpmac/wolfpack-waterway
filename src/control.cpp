@@ -27,7 +27,7 @@
 #define PUMP_TRIGGER_OFF (5)
 #define ENCODER_INCREMENT (5)
 #define TUNNEL_MIN_SPEED (0)
-#define TUNNEL_MAX_SPEED (1000)
+#define TUNNEL_MAX_SPEED (500)
 
 // pump variables
 static bool pump_single_switch =
@@ -36,8 +36,8 @@ static bool pump_single_switch =
 // flow sensor variables
 static int flow_sensor_1_count = 0;
 static int flow_sensor_2_count = 0;
-static uint32_t flow_time = 0;
-static uint32_t flow_correction_factor = 220; // 21.5278208334
+// static uint32_t flow_time = 0;
+// static uint32_t flow_correction_factor = 220; // 21.5278208334
 
 // switch variables
 static bool my_sw_limit_max = false;
@@ -47,10 +47,8 @@ static bool my_sw_run = false;
 // control variables
 static int32_t my_tunnel_setpoint = 0;
 static int32_t my_tunnel_speed = 0;
-static pump_enum_t my_pump_status = PUMPS_NONE_ACTIVE;
 static bool my_speed_override = false;
 static uint16_t my_override_value = 0;
-static control_status_t my_display_state;
 
 // PID Variables
 

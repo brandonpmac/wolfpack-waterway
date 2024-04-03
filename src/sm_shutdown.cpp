@@ -93,9 +93,17 @@ void sm_shutdown_periodic(void) {
 
   case SHUTDOWN_SECOND:
     if ((millis() - my_time) > SHUTDOWN_SECOND_TIME) {
-      my_shutdown_state = SHUTDOWN_COMPLETE;
+      my_shutdown_state = SHUTDOWN_MOVE_VALVE;
     }
     break;
+
+  case SHUTDOWN_MOVE_VALVE:
+    if (si_switch_get(SW_LIMIT_MAX)) {
+      si_stepper_speed_set(-OPEN_SPEED);
+    } else {
+      si_stepper_speed_set(0);
+      my_shutdown_state = SHUTDOWN_COMPLETE;
+    }
 
   case SHUTDOWN_COMPLETE:
     sm_event_send(SM_EVENT_SHUTDOWN_COMPLETE);

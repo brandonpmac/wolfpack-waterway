@@ -9,6 +9,7 @@
  *
  */
 
+#include "control.h"
 #include "log.h"
 #include "menu.h"
 #include "scheduler.h"
@@ -27,6 +28,9 @@ void sm_run_entry(sm_event_t last_event) {
   scheduler.enableTask(4, true, true); // switch task
   scheduler.enableTask(5, true, true); // flow sensor task
   scheduler.enableTask(6, true, true); // control task
+
+  // set speed to 500
+  tunnel_setpoint_set(500);
 }
 
 void sm_run_exit(void) {
