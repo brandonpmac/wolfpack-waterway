@@ -23,9 +23,19 @@ typedef enum {
   WHITE,
 } si_led_color_t;
 
-void si_led_color_1_set(si_led_color_t color);
+typedef enum {
+  LED_OFF,
+  LED_INIT,
+  LED_IDLE,
+  LED_ERROR,
+  LED_PRIME,
+  LED_RUN,
+  LED_SHUTDOWN,
 
-void si_led_color_2_set(si_led_color_t color);
+  LED_CNT,
+} si_led_state_t;
+
+void si_led_set(si_led_state_t state);
 
 void si_led_task(void);
 

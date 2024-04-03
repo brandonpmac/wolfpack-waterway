@@ -20,8 +20,7 @@ void sm_error_entry(sm_event_t last_event) {
   Serial.println("Error entry");
 
   // setting led color
-  si_led_color_1_set(RED);
-  si_led_color_2_set(OFF);
+  si_led_set(LED_ERROR);
 
   frame_set(DISPLAY_FRAME_ERROR);
 }

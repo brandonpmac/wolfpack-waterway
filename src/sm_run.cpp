@@ -2,51 +2,47 @@
  * @file sm_run.cpp
  * @author Brandon McClenathan (brandon@mcclenathan.us)
  * @brief
- * @date 2024-02-18
+ * @date 2024-04-02
  *
  * North Carolina State University Class of 2024
  * Mechanical Engineering Senior Design, Water Tunnel, Group 5
  *
  */
 
-#include <Arduino.h>
-
-#include "control.h"
+#include "log.h"
+#include "menu.h"
 #include "scheduler.h"
-#include "si_led.h"
 #include "si_stepper.h"
+#include "si_switch.h"
 #include "sm.h"
-#include "sm_run.h"
 #include "sm_types.h"
 
 void sm_run_entry(sm_event_t last_event) {
-  Serial.println("Run entry");
+  frame_set(DISPLAY_FRAME_RUN);
+  LOG_INF("Run Entry")
 
-  // enabling tasks
-  scheduler.enableTask(
-      2, true, true); // encoder task    static Scheduler& getInstance();
-  scheduler.enableTask(3, true, true); // encoder task
-  scheduler.enableTask(
-      4, true, true); // control task LSched::Scheduler::getInstance().enable;
-
-  // Setting led colors
-  si_led_color_1_set(GREEN);
-  si_led_color_2_set(OFF);
+  // enable tasks
+  scheduler.enableTask(2, true, true); // encoder task
+  scheduler.enableTask(3, true, true); // switch task
+  scheduler.enableTask(4, true, true); // switch task
+  scheduler.enableTask(5, true, true); // flow sensor task
+  scheduler.enableTask(6, true, true); // control task
 }
 
 void sm_run_exit(void) {
-  Serial.println("Run exit");
-
-  // disabling tasks
+  LOG_INF("Run Exit")
   scheduler.enableTask(2, false, false); // encoder task
-  scheduler.enableTask(3, false, false); // encoder task
-  scheduler.enableTask(4, false, false); // control task
+  scheduler.enableTask(3, false, false); // switch task
+  scheduler.enableTask(4, false, false); // switch task
+  scheduler.enableTask(5, false, false); // flow sensor task
+  scheduler.enableTask(6, false, false); // control task
 
   si_stepper_speed_set(0);
 }
 
 void sm_run_periodic(void) {
-  if (!sw_run_get()) {
-    sm_event_send(SM_EVENT_IDLE);
+  if (!si_switch_get(SW_RUN)) {
+    sm_event_send(SM_EVENT_SHUTDOWN);
+    return;
   }
 }

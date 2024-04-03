@@ -45,24 +45,48 @@ static bool my_sw_limit_min = false;
 static bool my_sw_run = false;
 
 // control variables
-static int my_tunnel_setpoint = 0;
-static int my_tunnel_speed = 0;
+static int32_t my_tunnel_setpoint = 0;
+static int32_t my_tunnel_speed = 0;
 static pump_enum_t my_pump_status = PUMPS_NONE_ACTIVE;
 static bool my_speed_override = false;
 static uint16_t my_override_value = 0;
+static control_status_t my_display_state;
 
 // PID Variables
 
-// function declarations
-static pump_enum_t pump_check(pump_enum_t status);
-static void pump_control(void);
-static uint32_t flow_rate_calc();
+static int16_t control_p = -10;
+static int16_t control_i = 0;
+static int16_t control_d = 0;
+static int32_t control_motor_speed = 0;
 
-// tasks
-/// @brief control loop
+// function declarations
+static int32_t flow_rate_calc();
+
+// tasks ----------------------------------
+
+/// @brief flow sensor loop
+void flow_sensor_task(void) {
+  static int32_t new_tunnel_speed = flow_rate_calc();
+  if (my_tunnel_speed != new_tunnel_speed) {
+    my_tunnel_speed = new_tunnel_speed;
+    display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
+  }
+}
+
 void control_task(void) {
-  my_tunnel_speed = flow_rate_calc();
-  display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
+  int32_t error = my_tunnel_setpoint - my_tunnel_speed;
+  int32_t p_correction = control_p * error;
+  control_motor_speed = p_correction;
+
+  if (control_motor_speed > 0 & si_switch_get(SW_LIMIT_MAX)) {
+    control_motor_speed = 0;
+  }
+
+  if (control_motor_speed < 0 & si_switch_get(SW_LIMIT_MIN)) {
+    control_motor_speed = 0;
+  }
+
+  si_stepper_speed_set(control_motor_speed);
 }
 
 void encoder_task(void) {
@@ -98,98 +122,57 @@ void switch_task(void) {
   if (si_switch_get(SW_LIMIT_MIN) != my_sw_limit_min) {
     display_notification_send(DISPLAY_NOTIFICATION_SW_LIMIT_MIN);
     my_sw_limit_min = !my_sw_limit_min;
+    if (my_sw_limit_min & (control_motor_speed < 0)) {
+      si_stepper_speed_set(0);
+    }
   }
   // checking the max limit switch
   if (si_switch_get(SW_LIMIT_MAX) != my_sw_limit_max) {
     display_notification_send(DISPLAY_NOTIFICATION_SW_LIMIT_MAX);
     my_sw_limit_max = !my_sw_limit_max;
+    if (my_sw_limit_max & (control_motor_speed > 0)) {
+      si_stepper_speed_set(0);
+    }
   }
   // check if the control switch is flipped
   if (si_switch_get(SW_RUN) != my_sw_run) {
     my_sw_run = !my_sw_run;
   }
-
-  // Check the flowrate
-  // if (my_speed_override) {
-  //   my_tunnel_speed = my_override_value;
-  // } else {
-  //   static uint16_t new_tunnel_speed = flow_rate_calc();
-  //   if (new_tunnel_speed != my_tunnel_speed) {
-  //     my_tunnel_speed = new_tunnel_speed;
-  //     display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
-  //   }
-  // }
-  display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
-
-  pump_enum_t new_pump_status = pump_check(my_pump_status);
-  if (new_pump_status != my_pump_status) {
-    my_pump_status = new_pump_status;
-  }
-  pump_control();
 }
 
-bool relay_pump_1_get(void) {
-  switch (my_pump_status) {
-  case PUMPS_BOTH_ACTIVE:
-  case PUMPS_FIRST_ACTIVE:
-    return true;
-    break;
+// functions ----------------------------
 
-  case PUMPS_SECOND_ACTIVE:
-  case PUMPS_NONE_ACTIVE:
-    return false;
-    break;
-
-  case PUMPS_ERROR:
-  default:
-    return false;
-    break;
-  }
-}
-
-bool relay_pump_2_get(void) {
-  switch (my_pump_status) {
-  case PUMPS_BOTH_ACTIVE:
-  case PUMPS_SECOND_ACTIVE:
-    return true;
-    break;
-
-  case PUMPS_FIRST_ACTIVE:
-  case PUMPS_NONE_ACTIVE:
-    return false;
-    break;
-
-  case PUMPS_ERROR:
-  default:
-    return false;
-    break;
-  }
-}
-
-pump_enum_t pump_status_get(void) { return my_pump_status; }
-uint16_t tunnel_setpoint_get(void) { return my_tunnel_setpoint; }
-uint16_t tunnel_speed_get(void) { return my_tunnel_speed; }
+int32_t tunnel_setpoint_get(void) { return my_tunnel_setpoint; }
+int32_t tunnel_speed_get(void) { return my_tunnel_speed; }
 
 bool sw_limit_max_get(void) { return my_sw_limit_max; }
 bool sw_limit_min_get(void) { return my_sw_limit_min; }
 bool sw_run_get(void) { return my_sw_run; }
 
-void tunnel_setpoint_set(uint16_t new_setpoint) {
+void tunnel_setpoint_set(int32_t new_setpoint) {
   my_tunnel_setpoint = new_setpoint;
 }
 
-uint32_t flow_rate_calc() {
+static int32_t flow_rate_calc() {
   flow_sensor_1_count = si_flow_sensor_rate_get(FLOW_SENSOR_1);
   flow_sensor_2_count = si_flow_sensor_rate_get(FLOW_SENSOR_2);
-  uint32_t flow_count = (flow_sensor_1_count + flow_sensor_2_count) * 10;
-  uint32_t flow_speed = (flow_count);
-  // if (my_speed_override) {
-  //   flow_speed = my_override_value;
-  // }
+  int32_t flow_count =
+      (flow_sensor_1_count +
+       flow_sensor_2_count); // amount of half liters since last calc
+  int32_t flow_speed = (flow_count);
+
+  // override
+  if (my_speed_override) {
+    flow_speed = my_override_value;
+  }
   return flow_speed;
 }
 
-void tunnel_speed_set(bool override, uint16_t new_speed) {
+/// @brief allows the shell script to override the actual tunnel speed for
+/// testing purposes
+/// @param override bool 1 or 0, 1 activates the override
+/// @param new_speed new speed for the tunnel
+void tunnel_speed_set(bool override, int32_t new_speed) {
   if (override) {
     my_speed_override = true;
     my_override_value = new_speed;
@@ -198,82 +181,18 @@ void tunnel_speed_set(bool override, uint16_t new_speed) {
   }
 }
 
-static pump_enum_t pump_check(pump_enum_t status) {
-  // Check to see if pumps should shut off
-  if (!my_sw_run) {
-    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
-    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
-    return PUMPS_NONE_ACTIVE;
-  } else if (my_tunnel_setpoint <= PUMP_TRIGGER_OFF) {
-    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
-    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
-    return PUMPS_NONE_ACTIVE;
-  }
-
-  switch (status) {
-  case PUMPS_NONE_ACTIVE:
-  case PUMPS_BOTH_ACTIVE:
-    if (my_tunnel_setpoint <= PUMP_TRIGGER_SINGLE) {
-      if (pump_single_switch) {
-        pump_single_switch = !pump_single_switch;
-        display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
-        return PUMPS_FIRST_ACTIVE;
-        // if the second pump was the last off, set the first to last off
-      } else {
-        pump_single_switch = !pump_single_switch;
-        display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
-        return PUMPS_SECOND_ACTIVE;
-      }
-    }
-    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
-    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
-    return PUMPS_BOTH_ACTIVE;
+void control_set_pid(int pid, uint16_t new_value) {
+  switch (pid) {
+  case 0:
+    control_p = new_value;
     break;
 
-  // Single pump mode check
-  case PUMPS_FIRST_ACTIVE:
-  case PUMPS_SECOND_ACTIVE:
-    if (my_tunnel_setpoint >= PUMP_TRIGGER_BOTH) {
-      display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
-      display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
-      return PUMPS_BOTH_ACTIVE;
-    }
-    return status;
+  case 1:
+    control_i = new_value;
     break;
 
-  default:
-    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_1);
-    display_notification_send(DISPLAY_NOTIFICATION_RELAY_PUMP_2);
-    return PUMPS_NONE_ACTIVE;
-  }
-  LOG_ERR("Unhandled Pump Case")
-  return PUMPS_ERROR;
-}
-
-static void pump_control(void) {
-  switch (my_pump_status) {
-  case PUMPS_NONE_ACTIVE:
-    si_relay_set(RELAY_PUMP_1, false);
-    si_relay_set(RELAY_PUMP_2, false);
-    break;
-
-  case PUMPS_BOTH_ACTIVE:
-    si_relay_set(RELAY_PUMP_1, true);
-    si_relay_set(RELAY_PUMP_2, true);
-    break;
-
-  case PUMPS_FIRST_ACTIVE:
-    si_relay_set(RELAY_PUMP_1, true);
-    si_relay_set(RELAY_PUMP_2, false);
-    break;
-
-  case PUMPS_SECOND_ACTIVE:
-    si_relay_set(RELAY_PUMP_1, false);
-    si_relay_set(RELAY_PUMP_2, true);
-    break;
-
-  default:
-    LOG_ERR("unhandeled pump event");
+  case 2:
+    control_d = new_value;
     break;
   }
 }

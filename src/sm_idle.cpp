@@ -24,29 +24,27 @@ void sm_idle_entry(sm_event_t last_event) {
   frame_set(DISPLAY_FRAME_IDLE);
 
   // enabling required tasks
-  scheduler.enableTask(2, true, true); // encoder task
-  scheduler.enableTask(3, true, true); // switch task
-  scheduler.enableTask(4, true, true); // switch task
+  // scheduler.enableTask(2, true, true); // encoder task
+  // scheduler.enableTask(3, true, true); // switch task
+  // scheduler.enableTask(4, true, true); // idle task
 
   // setting let color
-  si_led_color_1_set(BLUE);
-  si_led_color_2_set(OFF);
+  si_led_set(LED_IDLE);
 }
 
 void sm_idle_exit(void) {
   Serial.println("Idle exit");
 
   // turning the led off
-  si_led_color_1_set(OFF);
-  si_led_color_2_set(OFF);
+  si_led_set(LED_IDLE);
 
-  scheduler.enableTask(2, false, false); // encoder task
-  scheduler.enableTask(3, false, false); // switch task
-  scheduler.enableTask(4, true, true); // switch task
+  // scheduler.enableTask(2, false, false); // encoder task
+  // scheduler.enableTask(3, false, false); // switch task
+  // scheduler.enableTask(4, false, false); // idle task
 }
 
 void sm_idle_periodic(void) {
   if (si_switch_get(SW_RUN)) {
-    sm_event_send(SM_EVENT_RUN);
+    sm_event_send(SM_EVENT_PRIME);
   }
 }

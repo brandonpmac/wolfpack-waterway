@@ -13,15 +13,56 @@
 
 #include "pins.h"
 #include "si_led.h"
+#include "sm_types.h"
 
 static si_led_color_t my_led_1_color = OFF;
 static si_led_color_t my_led_2_color = OFF;
 static si_led_color_t my_led_current_state = my_led_1_color;
 static bool my_led_past_state = false;
 
-void si_led_color_1_set(si_led_color_t color) { my_led_1_color = color; }
+void si_led_set(si_led_state_t state) {
+  switch (state) {
+  case LED_OFF:
+    my_led_1_color = OFF;
+    my_led_2_color = OFF;
+    break;
 
-void si_led_color_2_set(si_led_color_t color) { my_led_2_color = color; }
+  case LED_INIT:
+    my_led_1_color = BLUE;
+    my_led_2_color = GREEN;
+    break;
+
+  case LED_IDLE:
+    my_led_1_color = BLUE;
+    my_led_2_color = OFF;
+    break;
+
+  case LED_ERROR:
+    my_led_1_color = RED;
+    my_led_2_color = OFF;
+    break;
+
+  case LED_PRIME:
+    my_led_1_color = YELLOW;
+    my_led_2_color = OFF;
+    break;
+
+  case LED_SHUTDOWN:
+    my_led_1_color = MAGENTA;
+    my_led_2_color = OFF;
+    break;
+
+  case LED_RUN:
+    my_led_1_color = GREEN;
+    my_led_2_color = OFF;
+    break;
+
+  default:
+    my_led_1_color = OFF;
+    my_led_2_color = OFF;
+    break;
+  }
+}
 
 void si_led_task(void) {
   if (my_led_past_state) {
