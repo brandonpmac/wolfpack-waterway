@@ -18,6 +18,7 @@ void shell_init(void) {
   shell.addCommand(F("set_target"), set_target_hndlr);
   shell.addCommand(F("set_speed"), set_speed_hndlr);
   shell.addCommand(F("set_pid"), set_pid_hndlr);
+  shell.addCommand(F("run_test"), run_test_hndlr);
   shell.addCommand(F("stepper_settings"), stepper_settings_hndlr);
 }
 

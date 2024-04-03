@@ -18,10 +18,7 @@
 #include "si_lcd.h"
 #include "si_stepper.h"
 
-// typedefs
-
 // variables
-static pump_enum_t my_pump_status = PUMPS_NONE_ACTIVE;
 static bool update_display[4] = {false, false, false, false};
 static display_frame_t frame = DISPLAY_FRAME_INIT;
 static char buffer[4][21] = {
@@ -128,7 +125,7 @@ void frame_task() {
       }
     } else {
       if (my_sw_limit_max) {
-        snprintf(buffer[2], 21, "Max:     | Min:  Xz  ");
+        snprintf(buffer[2], 21, "Max:     | Min:  X  ");
       } else {
         snprintf(buffer[2], 21, "Max:  X  | Min:  X  ");
       }
@@ -151,15 +148,6 @@ void frame_task() {
   //     }
   //   }
   si_lcd_write(LCD_LINE_4, buffer[3]);
-}
-
-/// @brief tells the system to update every line in the frame
-static void frame_write() {
-  for (int i = 0; i == LCD_LINE_CNT; i++) {
-    if (update_display[i]) {
-      update_display[i] = false;
-    }
-  }
 }
 
 /// @brief allows other files to send update notifications to the menu
@@ -191,8 +179,6 @@ void display_notification_send(display_notification_t notification) {
     break;
   }
 }
-
-// Updates the frame to print to the lcd screen
 
 #ifdef TEST_BUILD
 

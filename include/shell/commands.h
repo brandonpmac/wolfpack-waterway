@@ -15,6 +15,7 @@
 int set_target_hndlr(int argc, char **argv);
 int set_speed_hndlr(int argc, char **argv);
 int set_pid_hndlr(int argc, char **argv);
+int run_test_hndlr(int argc, char **argv);
 int stepper_settings_hndlr(int argc, char **argv);
 
 #endif // COMMANDS_H

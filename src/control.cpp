@@ -22,20 +22,12 @@
 #include "si_switch.h"
 #include "sm.h"
 
-#define PUMP_TRIGGER_BOTH (250)
-#define PUMP_TRIGGER_SINGLE (125)
-#define PUMP_TRIGGER_OFF (5)
-#define ENCODER_INCREMENT (5)
-#define TUNNEL_MIN_SPEED (0)
+#define TUNNEL_MIN_SPEED (100)
 #define TUNNEL_MAX_SPEED (500)
 
-// pump variables
-static bool pump_single_switch =
-    rand() % 2; // Bool to remember which pump was last off
-
 // flow sensor variables
-static int flow_sensor_1_count = 0;
-static int flow_sensor_2_count = 0;
+static uint32_t flow_sensor_1_count = 0;
+static uint32_t flow_sensor_2_count = 0;
 // static uint32_t flow_time = 0;
 // static uint32_t flow_correction_factor = 220; // 21.5278208334
 
@@ -43,50 +35,27 @@ static int flow_sensor_2_count = 0;
 static bool my_sw_limit_max = false;
 static bool my_sw_limit_min = false;
 static bool my_sw_run = false;
+static uint16_t encoder_increment = 5;
 
 // control variables
-static int32_t my_tunnel_setpoint = 0;
-static int32_t my_tunnel_speed = 0;
+static uint16_t my_tunnel_setpoint = 0;
+static float my_tunnel_speed = 0;
 static bool my_speed_override = false;
 static uint16_t my_override_value = 0;
 
 // PID Variables
-
-static int16_t control_p = -10;
+static int16_t control_p = 10;
 static int16_t control_i = 0;
 static int16_t control_d = 0;
 static int32_t control_motor_speed = 0;
 
 // function declarations
-static int32_t flow_rate_calc();
+static float flow_rate_calc();
 
 // tasks ----------------------------------
 
-/// @brief flow sensor loop
-void flow_sensor_task(void) {
-  static int32_t new_tunnel_speed = flow_rate_calc();
-  if (my_tunnel_speed != new_tunnel_speed) {
-    my_tunnel_speed = new_tunnel_speed;
-    display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
-  }
-}
-
-void control_task(void) {
-  int32_t error = my_tunnel_setpoint - my_tunnel_speed;
-  int32_t p_correction = control_p * error;
-  control_motor_speed = p_correction;
-
-  if (control_motor_speed > 0 & si_switch_get(SW_LIMIT_MAX)) {
-    control_motor_speed = 0;
-  }
-
-  if (control_motor_speed < 0 & si_switch_get(SW_LIMIT_MIN)) {
-    control_motor_speed = 0;
-  }
-
-  si_stepper_speed_set(control_motor_speed);
-}
-
+/// @brief encoder task stages an increase or decrease in the tunnel target
+/// based on the rotation of the encoder
 void encoder_task(void) {
   si_encoder_event_t event = si_encoder_event_get();
   switch (event) {
@@ -97,7 +66,7 @@ void encoder_task(void) {
     if (tunnel_setpoint_get() == 0) {
       break;
     }
-    tunnel_setpoint_set(tunnel_setpoint_get() - ENCODER_INCREMENT);
+    tunnel_setpoint_set(tunnel_setpoint_get() - encoder_increment);
     display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SETPOINT);
     break;
 
@@ -105,7 +74,7 @@ void encoder_task(void) {
     if (tunnel_setpoint_get() == 1000) {
       break;
     }
-    tunnel_setpoint_set(tunnel_setpoint_get() + ENCODER_INCREMENT);
+    tunnel_setpoint_set(tunnel_setpoint_get() + encoder_increment);
     display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SETPOINT);
     break;
 
@@ -115,6 +84,7 @@ void encoder_task(void) {
   }
 }
 
+/// @brief Checks switches to see if any action needs to be taken
 void switch_task(void) {
   // checking the min limit switch
   if (si_switch_get(SW_LIMIT_MIN) != my_sw_limit_min) {
@@ -138,26 +108,58 @@ void switch_task(void) {
   }
 }
 
+/// @brief flow sensor loop
+void flow_sensor_task(void) {
+  static float new_tunnel_speed = flow_rate_calc();
+  if (my_tunnel_speed != new_tunnel_speed) {
+    my_tunnel_speed = new_tunnel_speed;
+    display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
+  }
+}
+
+/// @brief pid loop
+void control_task(void) {
+  // PID value setup
+  float error = my_tunnel_setpoint - my_tunnel_speed;
+  float p_correction = control_p * error;
+  control_motor_speed = p_correction;
+
+  if (control_motor_speed > 0 & si_switch_get(SW_LIMIT_MAX)) {
+    control_motor_speed = 0;
+  }
+
+  if (control_motor_speed < 0 & si_switch_get(SW_LIMIT_MIN)) {
+    control_motor_speed = 0;
+  }
+
+  si_stepper_speed_set(control_motor_speed);
+}
+
 // functions ----------------------------
 
-int32_t tunnel_setpoint_get(void) { return my_tunnel_setpoint; }
-int32_t tunnel_speed_get(void) { return my_tunnel_speed; }
+uint16_t tunnel_setpoint_get(void) { return my_tunnel_setpoint; }
+float tunnel_speed_get(void) { return my_tunnel_speed; }
 
 bool sw_limit_max_get(void) { return my_sw_limit_max; }
 bool sw_limit_min_get(void) { return my_sw_limit_min; }
 bool sw_run_get(void) { return my_sw_run; }
 
-void tunnel_setpoint_set(int32_t new_setpoint) {
+/// @brief sets the tunnel setpoint
+/// @param new_setpoint new setpoint vale
+void tunnel_setpoint_set(uint16_t new_setpoint) {
   my_tunnel_setpoint = new_setpoint;
+  display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SETPOINT);
 }
 
-static int32_t flow_rate_calc() {
+/// @brief calculates the current flow rate of the tunnel
+/// @return flowspeed of the tonnel
+static float flow_rate_calc() {
   flow_sensor_1_count = si_flow_sensor_rate_get(FLOW_SENSOR_1);
   flow_sensor_2_count = si_flow_sensor_rate_get(FLOW_SENSOR_2);
-  int32_t flow_count =
+  float flow_count =
       (flow_sensor_1_count +
-       flow_sensor_2_count); // amount of half liters since last calc
-  int32_t flow_speed = (flow_count);
+       flow_sensor_2_count); // amount of liters since last calc
+  float flow_speed = (flow_count);
 
   // override
   if (my_speed_override) {
@@ -179,6 +181,9 @@ void tunnel_speed_set(bool override, int32_t new_speed) {
   }
 }
 
+/// @brief allows the shell script to set the pid values
+/// @param pid specified value to change. 0 for p, 1 for i, 2 for d
+/// @param new_value value to set the pid value to
 void control_set_pid(int pid, uint16_t new_value) {
   switch (pid) {
   case 0:
