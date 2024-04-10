@@ -14,9 +14,8 @@
 
 #include <stdint.h>
 
-
 uint16_t tunnel_setpoint_get(void);
-float tunnel_speed_get(void);
+uint32_t tunnel_speed_get(void);
 
 bool sw_limit_max_get(void);
 bool sw_limit_min_get(void);
@@ -29,6 +28,7 @@ void tunnel_speed_set(bool, int32_t);
 void tunnel_setpoint_set(uint16_t new_setpoint);
 void encoder_vent_get(void);
 void control_set_pid(int pid, uint16_t new_value);
+int16_t pid_values_get(int value);
 
 // interupts
 void ISR_flow_sensor_1_SIGNAL(void);

@@ -9,6 +9,7 @@
  */
 
 #include <Arduino.h>
+#include <EEPROM.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -25,6 +26,13 @@
 #define TUNNEL_MIN_SPEED (100)
 #define TUNNEL_MAX_SPEED (500)
 
+// function declarations
+static uint32_t flow_rate_calc();
+static void write_to_eeprom(uint16_t number, uint8_t address);
+static uint16_t read_from_eeprom(uint8_t address);
+
+// Variables ------------------------------------
+
 // flow sensor variables
 static uint32_t flow_sensor_1_count = 0;
 static uint32_t flow_sensor_2_count = 0;
@@ -38,19 +46,20 @@ static bool my_sw_run = false;
 static uint16_t encoder_increment = 5;
 
 // control variables
-static uint16_t my_tunnel_setpoint = 0;
-static float my_tunnel_speed = 0;
+static uint32_t my_tunnel_setpoint = 0;
+static uint32_t my_tunnel_speed = 0;
 static bool my_speed_override = false;
 static uint16_t my_override_value = 0;
 
 // PID Variables
-static int16_t control_p = 10;
-static int16_t control_i = 0;
-static int16_t control_d = 0;
+static uint16_t my_p_const = read_from_eeprom(0);
+static uint16_t my_i_const = read_from_eeprom(2);
+static uint32_t i_term = 0;
+static int32_t my_max_i = 50;
+static int16_t my_min_i = -50;
+static uint16_t my_d_const = read_from_eeprom(4);
 static int32_t control_motor_speed = 0;
-
-// function declarations
-static float flow_rate_calc();
+static float my_last_value = 0;
 
 // tasks ----------------------------------
 
@@ -110,7 +119,7 @@ void switch_task(void) {
 
 /// @brief flow sensor loop
 void flow_sensor_task(void) {
-  static float new_tunnel_speed = flow_rate_calc();
+  uint32_t new_tunnel_speed = flow_rate_calc();
   if (my_tunnel_speed != new_tunnel_speed) {
     my_tunnel_speed = new_tunnel_speed;
     display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
@@ -120,15 +129,34 @@ void flow_sensor_task(void) {
 /// @brief pid loop
 void control_task(void) {
   // PID value setup
-  float error = my_tunnel_setpoint - my_tunnel_speed;
-  float p_correction = control_p * error;
-  control_motor_speed = p_correction;
+  uint32_t error = my_tunnel_setpoint - my_tunnel_speed;
 
-  if (control_motor_speed > 0 & si_switch_get(SW_LIMIT_MAX)) {
+  // P Value
+  uint32_t p_term = my_p_const * error;
+
+  // I Value
+  i_term = i_term + error;
+  // Saturation check
+  if (i_term > my_max_i) {
+    i_term = my_max_i;
+  } else if (i_term < my_min_i) {
+    i_term = my_min_i;
+  }
+  i_term *= my_i_const;
+
+  // D value
+  uint32_t d_term = (my_tunnel_speed - my_last_value) * my_d_const;
+  my_last_value = my_tunnel_speed;
+
+  // PID Calculation
+  // control_motor_speed = p_term + i_term - d_term;
+  control_motor_speed = p_term + i_term - d_term;
+
+  if ((control_motor_speed > 0) & si_switch_get(SW_LIMIT_MAX)) {
     control_motor_speed = 0;
   }
 
-  if (control_motor_speed < 0 & si_switch_get(SW_LIMIT_MIN)) {
+  if ((control_motor_speed < 0) & si_switch_get(SW_LIMIT_MIN)) {
     control_motor_speed = 0;
   }
 
@@ -138,7 +166,7 @@ void control_task(void) {
 // functions ----------------------------
 
 uint16_t tunnel_setpoint_get(void) { return my_tunnel_setpoint; }
-float tunnel_speed_get(void) { return my_tunnel_speed; }
+uint32_t tunnel_speed_get(void) { return my_tunnel_speed; }
 
 bool sw_limit_max_get(void) { return my_sw_limit_max; }
 bool sw_limit_min_get(void) { return my_sw_limit_min; }
@@ -151,15 +179,31 @@ void tunnel_setpoint_set(uint16_t new_setpoint) {
   display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SETPOINT);
 }
 
+int16_t pid_values_get(int value) {
+  switch (value) {
+  case (0):
+    return my_p_const;
+    break;
+
+  case (1):
+    return my_i_const;
+    break;
+
+  case (2):
+    return my_d_const;
+    break;
+  }
+}
+
 /// @brief calculates the current flow rate of the tunnel
 /// @return flowspeed of the tonnel
-static float flow_rate_calc() {
+static uint32_t flow_rate_calc() {
   flow_sensor_1_count = si_flow_sensor_rate_get(FLOW_SENSOR_1);
   flow_sensor_2_count = si_flow_sensor_rate_get(FLOW_SENSOR_2);
-  float flow_count =
+  uint32_t flow_count =
       (flow_sensor_1_count +
        flow_sensor_2_count); // amount of liters since last calc
-  float flow_speed = (flow_count);
+  uint32_t flow_speed = (flow_count)*2;
 
   // override
   if (my_speed_override) {
@@ -187,17 +231,35 @@ void tunnel_speed_set(bool override, int32_t new_speed) {
 void control_set_pid(int pid, uint16_t new_value) {
   switch (pid) {
   case 0:
-    control_p = new_value;
+    write_to_eeprom(new_value, 0);
+    my_p_const = read_from_eeprom(0);
     break;
 
   case 1:
-    control_i = new_value;
+    write_to_eeprom(new_value, 2);
+    my_i_const = read_from_eeprom(2);
     break;
 
   case 2:
-    control_d = new_value;
+    write_to_eeprom(new_value, 4);
+    my_d_const = read_from_eeprom(4);
     break;
   }
+}
+
+static void write_to_eeprom(uint16_t number, uint8_t address) {
+  byte byte1 = number >> 8;
+  byte byte2 = number & 0xFF;
+
+  EEPROM.write(address, byte1);
+  EEPROM.write(address + 1, byte2);
+}
+
+static uint16_t read_from_eeprom(uint8_t address) {
+  byte byte1 = EEPROM.read(address);
+  byte byte2 = EEPROM.read(address + 1);
+
+  return (byte1 << 8) + byte2;
 }
 
 #ifdef TEST_BUILD

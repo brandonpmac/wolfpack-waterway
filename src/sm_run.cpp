@@ -23,9 +23,10 @@
 
 //
 static sm_run_state_t my_run_state = RUN_NORMAL;
-static uint16_t my_run_speed = 500;
+static uint16_t my_run_speed = 600;
 static uint32_t my_run_start_time = 0;
 static uint32_t my_run_duration = 0;
+static uint32_t my_last_point = 0;
 
 /// @brief run entry
 /// @param last_event
@@ -36,7 +37,7 @@ void sm_run_entry(sm_event_t last_event) {
   // enable tasks
   scheduler.enableTask(2, true, true); // encoder task
   scheduler.enableTask(3, true, true); // switch task
-  scheduler.enableTask(4, true, true); // switch task
+  scheduler.enableTask(4, true, true); // flow Sensor taks
   scheduler.enableTask(5, true, true); // flow sensor task
   scheduler.enableTask(6, true, true); // control task
 
@@ -76,10 +77,14 @@ void sm_run_periodic(void) {
 
   case RUN_TEST_START:
     scheduler.enableTask(2, false, false); // encoder task
+    my_last_point = 0;
     tunnel_setpoint_set(my_run_speed);
     LOG_INF("Response Test Start");
     LOG_INF("Setpoint: %.4ld", my_run_speed);
-    LOG_INF("Duration: %.4ld", my_run_duration/1000);
+    LOG_INF("Duration: %.4ld", my_run_duration / 1000);
+    LOG_INF("P_CONST: %.8d", pid_values_get(0));
+    LOG_INF("I_CONST: %.8d", pid_values_get(1));
+    LOG_INF("D_CONST: %.8d", pid_values_get(2));
     my_run_state = RUN_TEST;
     break;
 
@@ -88,11 +93,16 @@ void sm_run_periodic(void) {
     scheduler.enableTask(2, true, true); // encoder task
     LOG_INF("Response Test End");
     my_run_state = RUN_NORMAL;
+    tunnel_setpoint_set(550);
     break;
 
   case RUN_TEST:
     if (test_time < my_run_duration) {
-      LOG_INF("%.8lu, %.4lu, %.4lu",test_time,tunnel_setpoint,tunnel_speed);
+      if ((test_time - my_last_point) > 500) {
+        my_last_point = test_time;
+        LOG_INF("%.8lu, %.4lu, %.4lu", test_time, tunnel_setpoint,
+                tunnel_speed);
+      }
     } else {
       my_run_state = RUN_TEST_END;
     }

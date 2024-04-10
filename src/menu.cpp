@@ -29,7 +29,7 @@ static char buffer[4][21] = {
 };
 
 static uint16_t my_tunnel_setpoint = 0;
-static uint16_t my_tunnel_speed = 0;
+static uint32_t my_tunnel_speed = 0;
 static bool my_sw_limit_min = false;
 static bool my_sw_limit_max = false;
 
