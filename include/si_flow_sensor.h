@@ -24,6 +24,6 @@ typedef enum {
 void ISR_flow_sensor_1_signal(void);
 void ISR_flow_sensor_2_signal(void);
 
-uint16_t si_flow_sensor_rate_get(si_flow_sensor_t sensor);
+float si_flow_sensor_rate_get(si_flow_sensor_t sensor);
 
 #endif // SI_FLOW_SENSOR_H

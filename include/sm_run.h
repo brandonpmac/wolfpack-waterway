@@ -17,6 +17,7 @@
 typedef enum {
   RUN_NORMAL,
   RUN_TEST,
+  RUN_TEST_DELAY,
   RUN_TEST_START,
   RUN_TEST_END,
 

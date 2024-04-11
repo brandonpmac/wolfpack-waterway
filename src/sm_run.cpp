@@ -15,13 +15,15 @@
 #include "log.h"
 #include "menu.h"
 #include "scheduler.h"
+#include "si_led.h"
 #include "si_stepper.h"
 #include "si_switch.h"
 #include "sm.h"
 #include "sm_run.h"
 #include "sm_types.h"
 
-//
+#define TUNNEL_SPEED_START (700)
+
 static sm_run_state_t my_run_state = RUN_NORMAL;
 static uint16_t my_run_speed = 600;
 static uint32_t my_run_start_time = 0;
@@ -40,9 +42,12 @@ void sm_run_entry(sm_event_t last_event) {
   scheduler.enableTask(4, true, true); // flow Sensor taks
   scheduler.enableTask(5, true, true); // flow sensor task
   scheduler.enableTask(6, true, true); // control task
+  scheduler.enableTask(7, true, true); // pump task
 
   // set speed to 500
-  tunnel_setpoint_set(500);
+  tunnel_setpoint_set(TUNNEL_SPEED_START);
+
+  si_led_set(LED_RUN);
 }
 
 /// @brief run exit
@@ -54,6 +59,7 @@ void sm_run_exit(void) {
   scheduler.enableTask(4, false, false); // switch task
   scheduler.enableTask(5, false, false); // flow sensor task
   scheduler.enableTask(6, false, false); // control task
+  scheduler.enableTask(7, false, false); // pump task
 
   si_stepper_speed_set(0);
 }
@@ -61,7 +67,7 @@ void sm_run_exit(void) {
 /// @brief run periodic
 /// @param
 void sm_run_periodic(void) {
-  if (!si_switch_get(SW_RUN)) {
+  if (!sw_run_get()) {
     sm_event_send(SM_EVENT_SHUTDOWN);
     return;
   }
@@ -72,20 +78,27 @@ void sm_run_periodic(void) {
 
   switch (my_run_state) {
   case RUN_NORMAL:
-
     break;
 
   case RUN_TEST_START:
     scheduler.enableTask(2, false, false); // encoder task
     my_last_point = 0;
-    tunnel_setpoint_set(my_run_speed);
     LOG_INF("Response Test Start");
-    LOG_INF("Setpoint: %.4ld", my_run_speed);
-    LOG_INF("Duration: %.4ld", my_run_duration / 1000);
+    LOG_INF("Setpoint: %.4ldmm/s", my_run_speed);
+    LOG_INF("Duration: %.4ld seconds", my_run_duration / 1000);
     LOG_INF("P_CONST: %.8d", pid_values_get(0));
     LOG_INF("I_CONST: %.8d", pid_values_get(1));
     LOG_INF("D_CONST: %.8d", pid_values_get(2));
-    my_run_state = RUN_TEST;
+    data_record_set(true, my_run_start_time);
+    my_run_state = RUN_TEST_DELAY;
+    break;
+
+  case RUN_TEST_DELAY:
+    if (test_time < 2000) {
+    } else {
+      tunnel_setpoint_set(my_run_speed);
+      my_run_state = RUN_TEST;
+    }
     break;
 
   case RUN_TEST_END:
@@ -93,16 +106,12 @@ void sm_run_periodic(void) {
     scheduler.enableTask(2, true, true); // encoder task
     LOG_INF("Response Test End");
     my_run_state = RUN_NORMAL;
-    tunnel_setpoint_set(550);
+    data_record_set(false, millis());
+    tunnel_setpoint_set(700);
     break;
 
   case RUN_TEST:
     if (test_time < my_run_duration) {
-      if ((test_time - my_last_point) > 500) {
-        my_last_point = test_time;
-        LOG_INF("%.8lu, %.4lu, %.4lu", test_time, tunnel_setpoint,
-                tunnel_speed);
-      }
     } else {
       my_run_state = RUN_TEST_END;
     }

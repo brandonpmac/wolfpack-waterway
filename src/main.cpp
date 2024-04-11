@@ -43,9 +43,10 @@ void setup() {
   scheduler.addTask(si_led_task, 1, 500, true, true);
   scheduler.addTask(encoder_task, 2, 15, false, false);
   scheduler.addTask(switch_task, 3, 20, false, false);
-  scheduler.addTask(flow_sensor_task, 4, 500, false, false);
-  scheduler.addTask(control_task, 5, 100, false, false);
+  scheduler.addTask(flow_sensor_task, 4, 50, false, false);
+  scheduler.addTask(control_task, 5, 50, false, false);
   scheduler.addTask(frame_task, 6, 100, false, false);
+  scheduler.addTask(pump_task, 7, 50, false, false);
   scheduler.addTask(shell_task, 9, 100, true, true);
 }
 

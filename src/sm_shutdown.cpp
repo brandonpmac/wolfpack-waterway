@@ -11,6 +11,7 @@
 
 #include <Arduino.h>
 
+#include "control.h"
 #include "log.h"
 #include "menu.h"
 #include "scheduler.h"
@@ -49,7 +50,7 @@ void sm_shutdown_entry(sm_event_t last_event) {
 }
 
 void sm_shutdown_periodic(void) {
-  static bool my_sw_run = si_switch_get(SW_RUN);
+  static bool my_sw_run = sw_run_get();
   my_relay_pump_1 = si_relay_status_get(RELAY_PUMP_1);
   my_relay_pump_2 = si_relay_status_get(RELAY_PUMP_2);
 

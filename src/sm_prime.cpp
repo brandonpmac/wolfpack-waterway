@@ -11,6 +11,7 @@
 
 #include <Arduino.h>
 
+#include "control.h"
 #include "log.h"
 #include "menu.h"
 #include "scheduler.h"
@@ -42,6 +43,7 @@ void sm_prime_entry(sm_event_t last_event) {
   // enabling required tasks
   // scheduler.enableTask(2, true, true); // encoder task
   scheduler.enableTask(3, true, true); // switch task
+  scheduler.enableTask(4, true, true); // switch task
 
   // Resetting time
   my_time = millis();
@@ -50,7 +52,7 @@ void sm_prime_entry(sm_event_t last_event) {
 
 void sm_prime_periodic(void) {
   // Check if switch was turned off
-  if (!si_switch_get(SW_RUN)) {
+  if (!sw_run_get()) {
     sm_event_send(SM_EVENT_PRIME_TO_SHUT);
   }
 

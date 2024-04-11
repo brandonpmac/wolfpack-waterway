@@ -23,43 +23,53 @@
 #include "si_switch.h"
 #include "sm.h"
 
-#define TUNNEL_MIN_SPEED (100)
-#define TUNNEL_MAX_SPEED (500)
+#define TUNNEL_MIN_SPEED (175)
+#define TUNNEL_MAX_SPEED (700)
+#define TUNNEL_SINGLE_SPEED (400)
 
 // function declarations
 static uint32_t flow_rate_calc();
-static void write_to_eeprom(uint16_t number, uint8_t address);
-static uint16_t read_from_eeprom(uint8_t address);
+static void write_to_eeprom(int16_t number, eeprom_location_t address);
+static int16_t read_from_eeprom(eeprom_location_t address);
 
 // Variables ------------------------------------
 
 // flow sensor variables
-static uint32_t flow_sensor_1_count = 0;
-static uint32_t flow_sensor_2_count = 0;
+static float flow_sensor_1_count = 0;
+static float flow_sensor_2_count = 0;
 // static uint32_t flow_time = 0;
 // static uint32_t flow_correction_factor = 220; // 21.5278208334
+static uint8_t flow_sensor_updates = 0;
+static bool my_data_record = false;
+static uint16_t my_flow_correction =
+    read_from_eeprom(EEPROM_LOCATION_FLOW_CORRECTION);
 
 // switch variables
 static bool my_sw_limit_max = false;
 static bool my_sw_limit_min = false;
 static bool my_sw_run = false;
 static uint16_t encoder_increment = 5;
+static bool my_switch_override = false;
 
 // control variables
 static uint32_t my_tunnel_setpoint = 0;
 static uint32_t my_tunnel_speed = 0;
 static bool my_speed_override = false;
 static uint16_t my_override_value = 0;
+static uint32_t my_test_start = 0;
 
 // PID Variables
-static uint16_t my_p_const = read_from_eeprom(0);
-static uint16_t my_i_const = read_from_eeprom(2);
-static uint32_t i_term = 0;
-static int32_t my_max_i = 50;
-static int16_t my_min_i = -50;
-static uint16_t my_d_const = read_from_eeprom(4);
+static int16_t my_p_const = read_from_eeprom(EEPROM_LOCATION_P_CONST);
+static int16_t my_i_const = read_from_eeprom(EEPROM_LOCATION_I_CONST);
+static int32_t i_term = 0;
+static int32_t my_max_i = 100;
+static int32_t my_min_i = -100;
+static int16_t my_d_const = read_from_eeprom(EEPROM_LOCATION_D_CONST);
 static int32_t control_motor_speed = 0;
 static float my_last_value = 0;
+
+// Pump variables
+static bool my_pump_status = true;
 
 // tasks ----------------------------------
 
@@ -72,7 +82,7 @@ void encoder_task(void) {
     break;
 
   case ENCODER_EVENT_LEFT:
-    if (tunnel_setpoint_get() == 0) {
+    if (tunnel_setpoint_get() == TUNNEL_MIN_SPEED) {
       break;
     }
     tunnel_setpoint_set(tunnel_setpoint_get() - encoder_increment);
@@ -80,7 +90,7 @@ void encoder_task(void) {
     break;
 
   case ENCODER_EVENT_RIGHT:
-    if (tunnel_setpoint_get() == 1000) {
+    if (tunnel_setpoint_get() == TUNNEL_MAX_SPEED) {
       break;
     }
     tunnel_setpoint_set(tunnel_setpoint_get() + encoder_increment);
@@ -88,7 +98,7 @@ void encoder_task(void) {
     break;
 
   default:
-    LOG_ERR("unhandled encoder event");
+    LOG_INF("unhandled encoder event");
     break;
   }
 }
@@ -115,6 +125,10 @@ void switch_task(void) {
   if (si_switch_get(SW_RUN) != my_sw_run) {
     my_sw_run = !my_sw_run;
   }
+
+  if (my_switch_override) {
+    my_sw_run = true;
+  }
 }
 
 /// @brief flow sensor loop
@@ -122,12 +136,23 @@ void flow_sensor_task(void) {
   uint32_t new_tunnel_speed = flow_rate_calc();
   if (my_tunnel_speed != new_tunnel_speed) {
     my_tunnel_speed = new_tunnel_speed;
+  }
+  if (flow_sensor_updates < 32) {
+    flow_sensor_updates = flow_sensor_updates + 1;
+  } else {
     display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SPEED);
+    flow_sensor_updates = 0;
   }
 }
 
 /// @brief pid loop
 void control_task(void) {
+
+  if (my_data_record) {
+    LOG_INF("%.8lu, %.4lu, %.4lu", millis() - my_test_start, my_tunnel_setpoint,
+            my_tunnel_speed);
+  }
+
   // PID value setup
   uint32_t error = my_tunnel_setpoint - my_tunnel_speed;
 
@@ -163,6 +188,34 @@ void control_task(void) {
   si_stepper_speed_set(control_motor_speed);
 }
 
+void pump_task(void) {
+  if (my_tunnel_setpoint < TUNNEL_SINGLE_SPEED) {
+    if (my_pump_status) {
+      my_pump_status = false;
+      byte last_pump = EEPROM.read(EEPROM_LOCATION_PUMP);
+      if (last_pump == 1) {
+        write_to_eeprom(0, EEPROM_LOCATION_PUMP);
+        si_relay_set(RELAY_PUMP_1, LOW);
+      } else {
+        write_to_eeprom(1, EEPROM_LOCATION_PUMP);
+        si_relay_set(RELAY_PUMP_2, LOW);
+      }
+      // my_p_const = read_from_eeprom(EEPROM_LOCATION_P_CONST_SINGLE);
+      // my_i_const = read_from_eeprom(EEPROM_LOCATION_I_CONST_SINGLE);
+      // my_d_const = read_from_eeprom(EEPROM_LOCATION_D_CONST_SINGLE);
+    }
+  } else {
+    if (!my_pump_status) {
+      my_pump_status = true;
+      si_relay_set(RELAY_PUMP_1, HIGH);
+      si_relay_set(RELAY_PUMP_2, HIGH);
+      // my_p_const = read_from_eeprom(EEPROM_LOCATION_P_CONST);
+      // my_i_const = read_from_eeprom(EEPROM_LOCATION_I_CONST);
+      // my_d_const = read_from_eeprom(EEPROM_LOCATION_D_CONST);
+    }
+  }
+}
+
 // functions ----------------------------
 
 uint16_t tunnel_setpoint_get(void) { return my_tunnel_setpoint; }
@@ -179,6 +232,11 @@ void tunnel_setpoint_set(uint16_t new_setpoint) {
   display_notification_send(DISPLAY_NOTIFICATION_TUNNEL_SETPOINT);
 }
 
+void data_record_set(bool state, uint32_t test_start) {
+  my_data_record = state;
+  my_test_start = test_start;
+}
+
 int16_t pid_values_get(int value) {
   switch (value) {
   case (0):
@@ -192,7 +250,17 @@ int16_t pid_values_get(int value) {
   case (2):
     return my_d_const;
     break;
+
+  default:
+    return 0;
+    break;
   }
+}
+
+void set_correction_factor(uint16_t value) {
+  write_to_eeprom(value, EEPROM_LOCATION_FLOW_CORRECTION);
+  my_flow_correction = read_from_eeprom(EEPROM_LOCATION_FLOW_CORRECTION);
+  LOG_INF("Flow Correction : %.4u", my_flow_correction);
 }
 
 /// @brief calculates the current flow rate of the tunnel
@@ -200,15 +268,18 @@ int16_t pid_values_get(int value) {
 static uint32_t flow_rate_calc() {
   flow_sensor_1_count = si_flow_sensor_rate_get(FLOW_SENSOR_1);
   flow_sensor_2_count = si_flow_sensor_rate_get(FLOW_SENSOR_2);
-  uint32_t flow_count =
-      (flow_sensor_1_count +
-       flow_sensor_2_count); // amount of liters since last calc
-  uint32_t flow_speed = (flow_count)*2;
+  int32_t flow_count;
+
+  flow_count = (flow_sensor_1_count +
+                flow_sensor_2_count); // amount of liters since last calc
+  uint32_t flow_speed = ((flow_count)*my_flow_correction) / 2;
+
+  if (!my_pump_status) {
+    flow_count = flow_sensor_1_count - flow_sensor_2_count;
+    flow_speed = (abs(flow_count) * my_flow_correction) / 2;
+  }
 
   // override
-  if (my_speed_override) {
-    flow_speed = my_override_value;
-  }
   return flow_speed;
 }
 
@@ -225,40 +296,158 @@ void tunnel_speed_set(bool override, int32_t new_speed) {
   }
 }
 
+void set_override(bool value) { my_switch_override = value; }
+
 /// @brief allows the shell script to set the pid values
 /// @param pid specified value to change. 0 for p, 1 for i, 2 for d
 /// @param new_value value to set the pid value to
 void control_set_pid(int pid, uint16_t new_value) {
   switch (pid) {
   case 0:
-    write_to_eeprom(new_value, 0);
-    my_p_const = read_from_eeprom(0);
+    write_to_eeprom(new_value, EEPROM_LOCATION_P_CONST);
     break;
 
   case 1:
-    write_to_eeprom(new_value, 2);
-    my_i_const = read_from_eeprom(2);
+    write_to_eeprom(new_value, EEPROM_LOCATION_I_CONST);
     break;
 
   case 2:
-    write_to_eeprom(new_value, 4);
-    my_d_const = read_from_eeprom(4);
+    write_to_eeprom(new_value, EEPROM_LOCATION_D_CONST);
+    break;
+
+  case 3:
+    write_to_eeprom(new_value, EEPROM_LOCATION_P_CONST_SINGLE);
+    break;
+
+  case 4:
+    write_to_eeprom(new_value, EEPROM_LOCATION_I_CONST_SINGLE);
+    break;
+
+  case 5:
+    write_to_eeprom(new_value, EEPROM_LOCATION_D_CONST_SINGLE);
+    break;
+  }
+
+  my_p_const = read_from_eeprom(EEPROM_LOCATION_P_CONST);
+  my_i_const = read_from_eeprom(EEPROM_LOCATION_I_CONST);
+  my_d_const = read_from_eeprom(EEPROM_LOCATION_D_CONST);
+
+  if (my_pump_status) {
+
+  } else {
+    // my_p_const = read_from_eeprom(EEPROM_LOCATION_P_CONST_SINGLE);
+    // my_i_const = read_from_eeprom(EEPROM_LOCATION_I_CONST_SINGLE);
+    // my_d_const = read_from_eeprom(EEPROM_LOCATION_D_CONST_SINGLE);
+  }
+  LOG_INF("P Const: %4u", read_from_eeprom(EEPROM_LOCATION_P_CONST));
+  LOG_INF("I Const: %4u", read_from_eeprom(EEPROM_LOCATION_I_CONST));
+  LOG_INF("D Const: %4u", read_from_eeprom(EEPROM_LOCATION_D_CONST));
+  LOG_INF("P Const Single: %4u",
+          read_from_eeprom(EEPROM_LOCATION_P_CONST_SINGLE));
+  LOG_INF("I Const Single: %4u",
+          read_from_eeprom(EEPROM_LOCATION_I_CONST_SINGLE));
+  LOG_INF("D Const Single: %4u",
+          read_from_eeprom(EEPROM_LOCATION_D_CONST_SINGLE));
+}
+
+static void write_to_eeprom(int16_t number, eeprom_location_t address) {
+  byte byte1 = number >> 8;
+  byte byte2 = number & 0xFF;
+
+  switch (address) {
+  case EEPROM_LOCATION_P_CONST:
+    EEPROM.write(0, byte1);
+    EEPROM.write(1, byte2);
+    break;
+
+  case EEPROM_LOCATION_I_CONST:
+    EEPROM.write(2, byte1);
+    EEPROM.write(3, byte2);
+    break;
+
+  case EEPROM_LOCATION_D_CONST:
+    EEPROM.write(4, byte1);
+    EEPROM.write(5, byte2);
+    break;
+
+  case EEPROM_LOCATION_P_CONST_SINGLE:
+    EEPROM.write(6, byte1);
+    EEPROM.write(7, byte2);
+    break;
+
+  case EEPROM_LOCATION_I_CONST_SINGLE:
+    EEPROM.write(8, byte1);
+    EEPROM.write(9, byte2);
+    break;
+
+  case EEPROM_LOCATION_D_CONST_SINGLE:
+    EEPROM.write(10, byte1);
+    EEPROM.write(11, byte2);
+    break;
+
+  case EEPROM_LOCATION_PUMP:
+    EEPROM.write(12, byte1);
+    break;
+
+  case EEPROM_LOCATION_FLOW_CORRECTION:
+    EEPROM.write(13, byte1);
+    EEPROM.write(14, byte2);
+    break;
+
+  default:
+    LOG_ERR("Unhandled EEPROM address");
     break;
   }
 }
 
-static void write_to_eeprom(uint16_t number, uint8_t address) {
-  byte byte1 = number >> 8;
-  byte byte2 = number & 0xFF;
+static int16_t read_from_eeprom(eeprom_location_t address) {
+  byte byte1;
+  byte byte2;
 
-  EEPROM.write(address, byte1);
-  EEPROM.write(address + 1, byte2);
-}
+  switch (address) {
+  case EEPROM_LOCATION_P_CONST:
+    byte1 = EEPROM.read(0);
+    byte2 = EEPROM.read(1);
+    break;
 
-static uint16_t read_from_eeprom(uint8_t address) {
-  byte byte1 = EEPROM.read(address);
-  byte byte2 = EEPROM.read(address + 1);
+  case EEPROM_LOCATION_I_CONST:
+    byte1 = EEPROM.read(2);
+    byte2 = EEPROM.read(3);
+    break;
 
+  case EEPROM_LOCATION_D_CONST:
+    byte1 = EEPROM.read(4);
+    byte2 = EEPROM.read(5);
+    break;
+
+  case EEPROM_LOCATION_P_CONST_SINGLE:
+    byte1 = EEPROM.read(6);
+    byte2 = EEPROM.read(7);
+    break;
+
+  case EEPROM_LOCATION_I_CONST_SINGLE:
+    byte1 = EEPROM.read(8);
+    byte2 = EEPROM.read(9);
+    break;
+
+  case EEPROM_LOCATION_D_CONST_SINGLE:
+    byte1 = EEPROM.read(10);
+    byte2 = EEPROM.read(11);
+    break;
+
+  case EEPROM_LOCATION_PUMP:
+    byte1 = EEPROM.read(12);
+    break;
+
+  case EEPROM_LOCATION_FLOW_CORRECTION:
+    byte1 = EEPROM.read(13);
+    byte2 = EEPROM.read(14);
+    break;
+
+  default:
+    LOG_ERR("Unhandled EEPROM address");
+    break;
+  }
   return (byte1 << 8) + byte2;
 }
 

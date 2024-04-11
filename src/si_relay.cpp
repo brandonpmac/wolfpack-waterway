@@ -11,6 +11,7 @@
 
 #include <Arduino.h>
 
+#include "log.h"
 #include "pins.h"
 #include "si_relay.h"
 
@@ -33,5 +34,6 @@ bool si_relay_status_get(si_relay_t relay) {
 void si_relay_set(si_relay_t relay, bool state) {
   if (relay < RELAY_CNT) {
     digitalWrite(my_relay_pins[relay], state);
+    LOG_INF("Pump %.1u: %s", relay + 1, state ? "Start" : "Stop");
   }
 }

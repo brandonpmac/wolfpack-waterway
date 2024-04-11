@@ -72,7 +72,7 @@ void initialize(void) {
                   FALLING);
   attachInterrupt(digitalPinToInterrupt(PIN_FLOW_SENSOR_1),
                   ISR_flow_sensor_1_signal, FALLING);
-  attachInterrupt(digitalPinToInterrupt(PIN_FLOW_SENSOR_1),
+  attachInterrupt(digitalPinToInterrupt(PIN_FLOW_SENSOR_2),
                   ISR_flow_sensor_2_signal, FALLING);
 
   // initialize state machine

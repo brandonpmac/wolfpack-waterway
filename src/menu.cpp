@@ -22,22 +22,21 @@
 static bool update_display[4] = {false, false, false, false};
 static display_frame_t frame = DISPLAY_FRAME_INIT;
 static char buffer[4][21] = {
-    "Target :        mm/s",
-    "Current:   ---- mm/s",
-    "Max:     | Min:     ",
-    "                    ",
+    "--------------------",
+    "Target :   0000 mm/s",
+    "Current:   0000 mm/s",
+    "--------------------",
 };
 
 static uint16_t my_tunnel_setpoint = 0;
 static uint32_t my_tunnel_speed = 0;
-static bool my_sw_limit_min = false;
-static bool my_sw_limit_max = false;
 
 // functions
 void frame_set(display_frame_t new_frame) {
   frame = new_frame;
   switch (frame) {
   case DISPLAY_FRAME_RUN:
+    LOG_INF("Frame Update: Run")
     si_lcd_write(LCD_LINE_1, buffer[0]);
     si_lcd_write(LCD_LINE_2, buffer[1]);
     si_lcd_write(LCD_LINE_3, buffer[2]);
@@ -46,7 +45,7 @@ void frame_set(display_frame_t new_frame) {
 
   case DISPLAY_FRAME_INIT:
   case DISPLAY_FRAME_HOME:
-    LOG_INF("INIT FRAME")
+    LOG_INF("Frame Update: Init")
     si_lcd_write(LCD_LINE_1, "--------------------");
     si_lcd_write(LCD_LINE_2, "      WOLFPACK      ");
     si_lcd_write(LCD_LINE_3, "      WATERWAY      ");
@@ -54,6 +53,7 @@ void frame_set(display_frame_t new_frame) {
     break;
 
   case DISPLAY_FRAME_ERROR:
+    LOG_INF("Frame Update: Error")
     si_lcd_write(LCD_LINE_1, "--------------------");
     si_lcd_write(LCD_LINE_2, "       ERROR        ");
     si_lcd_write(LCD_LINE_3, "   RESTART SYSTEM   ");
@@ -61,6 +61,7 @@ void frame_set(display_frame_t new_frame) {
     break;
 
   case DISPLAY_FRAME_IDLE:
+    LOG_INF("Frame Update: Idle")
     si_lcd_write(LCD_LINE_1, "--------------------");
     si_lcd_write(LCD_LINE_2, "        IDLE        ");
     si_lcd_write(LCD_LINE_3, "                    ");
@@ -68,6 +69,7 @@ void frame_set(display_frame_t new_frame) {
     break;
 
   case DISPLAY_FRAME_PRIME_FIRST:
+    LOG_INF("Frame Update: Prime_1")
     si_lcd_write(LCD_LINE_1, "--------------------");
     si_lcd_write(LCD_LINE_2, "   Priming Pump 1   ");
     si_lcd_write(LCD_LINE_3, "                    ");
@@ -75,6 +77,7 @@ void frame_set(display_frame_t new_frame) {
     break;
 
   case DISPLAY_FRAME_PRIME_SECOND:
+    LOG_INF("Frame Update: Prime_2")
     si_lcd_write(LCD_LINE_1, "--------------------");
     si_lcd_write(LCD_LINE_2, "   Priming Pump 2   ");
     si_lcd_write(LCD_LINE_3, "                    ");
@@ -82,6 +85,7 @@ void frame_set(display_frame_t new_frame) {
     break;
 
   case DISPLAY_FRAME_SHUTDOWN_FIRST:
+    LOG_INF("Frame Update: Shut_1")
     si_lcd_write(LCD_LINE_1, "--------------------");
     si_lcd_write(LCD_LINE_2, "   Shutdown Pump 2  ");
     si_lcd_write(LCD_LINE_3, "                    ");
@@ -89,6 +93,7 @@ void frame_set(display_frame_t new_frame) {
     break;
 
   case DISPLAY_FRAME_SHUTDOWN_SECOND:
+    LOG_INF("Frame Update: Shut_2")
     si_lcd_write(LCD_LINE_1, "--------------------");
     si_lcd_write(LCD_LINE_2, "   Shutdown Pump 1  ");
     si_lcd_write(LCD_LINE_3, "                    ");
@@ -104,50 +109,19 @@ void frame_set(display_frame_t new_frame) {
 /// @brief task which updates the menu. Only updates in new data was sent.
 void frame_task() {
 
-  if (update_display[0]) {
-    my_tunnel_setpoint = tunnel_setpoint_get();
-    snprintf(buffer[0], 21, "Target :   %04d mm/s", my_tunnel_setpoint);
-    si_lcd_write(LCD_LINE_1, buffer[0]);
-  }
-
   if (update_display[1]) {
-    my_tunnel_speed = tunnel_speed_get();
-    snprintf(buffer[1], 21, "Current:   %04d mm/s", my_tunnel_speed);
+    my_tunnel_setpoint = tunnel_setpoint_get();
+    snprintf(buffer[1], 21, "Target :   %04d mm/s", my_tunnel_setpoint);
     si_lcd_write(LCD_LINE_2, buffer[1]);
+    update_display[1] = false;
   }
 
   if (update_display[2]) {
-    if (my_sw_limit_min) {
-      if (my_sw_limit_max) {
-        snprintf(buffer[2], 21, "Max:     | Min:     ");
-      } else {
-        snprintf(buffer[2], 21, "Max:  X  | Min:     ");
-      }
-    } else {
-      if (my_sw_limit_max) {
-        snprintf(buffer[2], 21, "Max:     | Min:  X  ");
-      } else {
-        snprintf(buffer[2], 21, "Max:  X  | Min:  X  ");
-      }
-    }
+    my_tunnel_speed = tunnel_speed_get();
+    snprintf(buffer[2], 21, "Current:   %04d mm/s", my_tunnel_speed);
     si_lcd_write(LCD_LINE_3, buffer[2]);
+    update_display[2] = false;
   }
-
-  // if (update_display[3]) {
-  //   if (my_relay_pump_2) {
-  //     if (my_sw_limit_min) {
-  //       snprintf(buffer[3], 21, "Pump2: ON  | Min:   ");
-  //     } else {
-  //       snprintf(buffer[3], 21, "Pump2: ON  | Min: X ");
-  //     }
-  //   } else {
-  //     if (my_sw_limit_min) {
-  //       snprintf(buffer[3], 21, "Pump2: OFF | Min:   ");
-  //     } else {
-  //       snprintf(buffer[3], 21, "Pump2: OFF | Min: X ");
-  //     }
-  //   }
-  si_lcd_write(LCD_LINE_4, buffer[3]);
 }
 
 /// @brief allows other files to send update notifications to the menu
@@ -156,21 +130,11 @@ void display_notification_send(display_notification_t notification) {
   switch (notification) {
   case DISPLAY_NOTIFICATION_TUNNEL_SETPOINT:
     my_tunnel_setpoint = tunnel_setpoint_get();
-    update_display[0] = true;
+    update_display[1] = true;
     break;
 
   case DISPLAY_NOTIFICATION_TUNNEL_SPEED:
     my_tunnel_speed = tunnel_speed_get();
-    update_display[1] = true;
-    break;
-
-  case DISPLAY_NOTIFICATION_SW_LIMIT_MIN:
-    my_sw_limit_min = sw_limit_min_get();
-    update_display[3] = true;
-    break;
-
-  case DISPLAY_NOTIFICATION_SW_LIMIT_MAX:
-    my_sw_limit_max = sw_limit_max_get();
     update_display[2] = true;
     break;
 
