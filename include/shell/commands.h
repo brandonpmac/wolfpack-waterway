@@ -19,5 +19,6 @@ int run_test_hndlr(int argc, char **argv);
 int stepper_settings_hndlr(int argc, char **argv);
 int start_hndlr(int argc, char **argv);
 int stop_hndlr(int argc, char **argv);
+int data_hndlr(int argc, char **argv);
 
 #endif // COMMANDS_H

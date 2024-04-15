@@ -23,8 +23,8 @@
 #include "si_switch.h"
 #include "sm.h"
 
-#define TUNNEL_MIN_SPEED (175)
-#define TUNNEL_MAX_SPEED (700)
+#define TUNNEL_MIN_SPEED (210)
+#define TUNNEL_MAX_SPEED (600)
 #define TUNNEL_SINGLE_SPEED (400)
 
 // function declarations

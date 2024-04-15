@@ -10,3 +10,10 @@ doc/
 
 # Build
 build/
+
+# Logs
+logs/
+
+# Data
+data/
+

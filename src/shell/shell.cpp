@@ -22,6 +22,7 @@ void shell_init(void) {
   shell.addCommand(F("step"), stepper_settings_hndlr);
   shell.addCommand(F("start"), start_hndlr);
   shell.addCommand(F("stop"), stop_hndlr);
+  shell.addCommand(F("data"), data_hndlr);
 }
 
 /// @brief shell task for the scheduler to run

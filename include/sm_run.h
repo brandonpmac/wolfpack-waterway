@@ -20,6 +20,8 @@ typedef enum {
   RUN_TEST_DELAY,
   RUN_TEST_START,
   RUN_TEST_END,
+  RUN_DATA,
+  RUN_DATA_DELAY,
 
   RUN_CNT,
   RUN_ERROR = RUN_CNT,
@@ -32,5 +34,7 @@ void sm_run_exit(void);
 void sm_run_periodic(void);
 
 void sm_run_test(uint16_t speed, uint32_t time);
+
+void sm_run_data(void);
 
 #endif // SM_RUN_H

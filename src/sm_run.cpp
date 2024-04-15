@@ -22,13 +22,20 @@
 #include "sm_run.h"
 #include "sm_types.h"
 
-#define TUNNEL_SPEED_START (700)
+#define TUNNEL_SPEED_START (600)
 
 static sm_run_state_t my_run_state = RUN_NORMAL;
-static uint16_t my_run_speed = 600;
+static uint16_t my_run_speed = 585;
 static uint32_t my_run_start_time = 0;
 static uint32_t my_run_duration = 0;
 static uint32_t my_last_point = 0;
+static uint8_t my_next_data = 0;
+static uint16_t my_test_speeds[2] = {
+    215,
+    210,
+};
+static bool my_data_active = false;
+static uint32_t my_data_delay_time = 0;
 
 /// @brief run entry
 /// @param last_event
@@ -73,11 +80,16 @@ void sm_run_periodic(void) {
   }
 
   uint32_t test_time = millis() - my_run_start_time;
-  uint32_t tunnel_setpoint = tunnel_setpoint_get();
-  uint32_t tunnel_speed = tunnel_speed_get();
 
   switch (my_run_state) {
   case RUN_NORMAL:
+    break;
+
+  case RUN_DATA:
+    if ((millis() - my_data_delay_time) > 30000) {
+      sm_run_test(my_test_speeds[my_next_data], 90000);
+      my_next_data = my_next_data + 1;
+    }
     break;
 
   case RUN_TEST_START:
@@ -102,12 +114,16 @@ void sm_run_periodic(void) {
     break;
 
   case RUN_TEST_END:
-
     scheduler.enableTask(2, true, true); // encoder task
+    if ((my_next_data < 2) & my_data_active) {
+      my_run_state = RUN_DATA;
+      my_data_delay_time = millis();
+    } else {
+      my_run_state = RUN_NORMAL;
+    }
     LOG_INF("Response Test End");
-    my_run_state = RUN_NORMAL;
     data_record_set(false, millis());
-    tunnel_setpoint_set(700);
+    tunnel_setpoint_set(585);
     break;
 
   case RUN_TEST:
@@ -129,4 +145,11 @@ void sm_run_test(uint16_t speed, uint32_t time) {
   my_run_speed = speed;
   my_run_start_time = millis();
   my_run_duration = time;
+}
+
+void sm_run_data(void) {
+  my_run_state = RUN_TEST_DELAY;
+  my_data_delay_time = millis();
+  my_data_active = true;
+  tunnel_setpoint_set(585);
 }
