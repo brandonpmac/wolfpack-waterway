@@ -1,7 +1,7 @@
 /**
  * @file sm_run.cpp
  * @author Brandon McClenathan (brandon@mcclenathan.us)
- * @brief
+ * @brief run state file
  * @date 2024-04-02
  *
  * North Carolina State University Class of 2024
@@ -30,10 +30,13 @@ static uint32_t my_run_start_time = 0;
 static uint32_t my_run_duration = 0;
 static uint32_t my_last_point = 0;
 static uint8_t my_next_data = 0;
-static uint16_t my_test_speeds[2] = {
-    215,
-    210,
+static uint16_t my_test_speeds[60] = {
+    550, 545, 540, 535, 530, 525, 520, 515, 510, 505, 500, 495, 490, 485, 480,
+    475, 470, 465, 460, 455, 450, 445, 440, 435, 430, 425, 420, 415, 410, 405,
+    280, 275, 270, 265, 260, 255, 250, 245, 240, 235, 230, 225, 220, 215, 210,
+    280, 275, 270, 265, 260, 255, 250, 245, 240, 235, 230, 225, 220, 215, 210,
 };
+
 static bool my_data_active = false;
 static uint32_t my_data_delay_time = 0;
 
@@ -49,11 +52,11 @@ void sm_run_entry(sm_event_t last_event) {
   scheduler.enableTask(4, true, true); // flow Sensor taks
   scheduler.enableTask(5, true, true); // flow sensor task
   scheduler.enableTask(6, true, true); // control task
-  scheduler.enableTask(7, true, true); // pump task
 
   // set speed to 500
   tunnel_setpoint_set(TUNNEL_SPEED_START);
 
+  // Set the LED
   si_led_set(LED_RUN);
 }
 
@@ -66,7 +69,6 @@ void sm_run_exit(void) {
   scheduler.enableTask(4, false, false); // switch task
   scheduler.enableTask(5, false, false); // flow sensor task
   scheduler.enableTask(6, false, false); // control task
-  scheduler.enableTask(7, false, false); // pump task
 
   si_stepper_speed_set(0);
 }
@@ -114,11 +116,11 @@ void sm_run_periodic(void) {
     break;
 
   case RUN_TEST_END:
-    scheduler.enableTask(2, true, true); // encoder task
-    if ((my_next_data < 2) & my_data_active) {
+    if ((my_next_data < 59) & my_data_active) {
       my_run_state = RUN_DATA;
       my_data_delay_time = millis();
     } else {
+      scheduler.enableTask(2, true, true); // encoder task
       my_run_state = RUN_NORMAL;
     }
     LOG_INF("Response Test End");

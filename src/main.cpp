@@ -46,7 +46,6 @@ void setup() {
   scheduler.addTask(flow_sensor_task, 4, 50, false, false);
   scheduler.addTask(control_task, 5, 50, false, false);
   scheduler.addTask(frame_task, 6, 100, false, false);
-  scheduler.addTask(pump_task, 7, 50, false, false);
   scheduler.addTask(shell_task, 9, 100, true, true);
 }
 

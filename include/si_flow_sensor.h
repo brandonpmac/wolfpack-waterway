@@ -1,7 +1,7 @@
 /**
  * @file si_flow_sensor.h
  * @author Brandon McClenathan (brandon@mcclenathan.us)
- * @brief
+ * @brief flow sensor header file
  * @date 2024-03-01
  *
  * North Carolina State University Class of 2024
@@ -25,5 +25,7 @@ void ISR_flow_sensor_1_signal(void);
 void ISR_flow_sensor_2_signal(void);
 
 float si_flow_sensor_rate_get(si_flow_sensor_t sensor);
+
+void set_correction_factor(uint16_t value);
 
 #endif // SI_FLOW_SENSOR_H

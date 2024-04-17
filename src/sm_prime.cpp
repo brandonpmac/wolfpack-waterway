@@ -31,6 +31,8 @@ static sm_prime_state_t my_prime_state = PRIME_ENTRY;
 static bool my_relay_pump_1 = si_relay_status_get(RELAY_PUMP_1);
 static bool my_relay_pump_2 = si_relay_status_get(RELAY_PUMP_2);
 
+/// @brief prime entry
+/// @param last_event last state
 void sm_prime_entry(sm_event_t last_event) {
   LOG_INF("Prime entry");
 
@@ -41,15 +43,16 @@ void sm_prime_entry(sm_event_t last_event) {
   si_led_set(LED_PRIME);
 
   // enabling required tasks
-  // scheduler.enableTask(2, true, true); // encoder task
   scheduler.enableTask(3, true, true); // switch task
-  scheduler.enableTask(4, true, true); // switch task
+  scheduler.enableTask(4, true, true); // flow sensor task
 
   // Resetting time
   my_time = millis();
   my_prime_state = PRIME_ENTRY;
 }
 
+/// @brief prime periodic
+/// @param
 void sm_prime_periodic(void) {
   // Check if switch was turned off
   if (!sw_run_get()) {
@@ -109,14 +112,16 @@ void sm_prime_periodic(void) {
   }
 }
 
+/// @brief prime exit
+/// @param
 void sm_prime_exit(void) {
   LOG_INF("Prime exit");
 
   // turning the led off
   si_led_set(LED_OFF);
 
-  scheduler.enableTask(2, false, false); // encoder task
   scheduler.enableTask(3, false, false); // switch task
+  scheduler.enableTask(4, false, false); // encoder task
 
   si_stepper_speed_set(0);
 }

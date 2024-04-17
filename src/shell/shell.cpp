@@ -23,6 +23,7 @@ void shell_init(void) {
   shell.addCommand(F("start"), start_hndlr);
   shell.addCommand(F("stop"), stop_hndlr);
   shell.addCommand(F("data"), data_hndlr);
+  shell.addCommand(F("reset"), reset_hndlr);
 }
 
 /// @brief shell task for the scheduler to run

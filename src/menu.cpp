@@ -1,14 +1,17 @@
 /**
  * @file menu.cpp
  * @author Brandon McClenathan (brandon@mcclenathan.us)
- * @brief functions to control the menu
+ * @brief menu control loop
  * @date 2024-01-30
  *
  * North Carolina State University Class of 2024
  * Mechanical Engineering Senior Design, Water Tunnel, Group 5
  */
 
+#define STEADY_STATE_TIME (30000)
+
 // includes
+#include <Arduino.h>
 #include <stdio.h>
 
 #include "control.h"
@@ -22,14 +25,16 @@
 static bool update_display[4] = {false, false, false, false};
 static display_frame_t frame = DISPLAY_FRAME_INIT;
 static char buffer[4][21] = {
-    "--------------------",
-    "Target :   0000 mm/s",
-    "Current:   0000 mm/s",
-    "--------------------",
+    "Target :   0.000 m/s",
+    "Current:   0.000 m/s",
+    "                    ",
+    "System: Adjusting   ",
 };
 
 static uint16_t my_tunnel_setpoint = 0;
-static uint32_t my_tunnel_speed = 0;
+static uint16_t my_tunnel_speed = 0;
+static uint32_t my_adjust_time = 0;
+static bool my_adjust_state = true;
 
 // functions
 void frame_set(display_frame_t new_frame) {
@@ -109,18 +114,30 @@ void frame_set(display_frame_t new_frame) {
 /// @brief task which updates the menu. Only updates in new data was sent.
 void frame_task() {
 
-  if (update_display[1]) {
+  if (update_display[0]) {
     my_tunnel_setpoint = tunnel_setpoint_get();
-    snprintf(buffer[1], 21, "Target :   %04d mm/s", my_tunnel_setpoint);
+    snprintf(buffer[0], 21, "Target :   0.%03u m/s", my_tunnel_setpoint);
+    si_lcd_write(LCD_LINE_1, buffer[0]);
+    update_display[0] = false;
+  }
+
+  if (update_display[1]) {
+    my_tunnel_speed = tunnel_speed_get();
+    snprintf(buffer[1], 21, "Current:   0.%03u m/s", my_tunnel_speed);
     si_lcd_write(LCD_LINE_2, buffer[1]);
     update_display[1] = false;
   }
 
-  if (update_display[2]) {
-    my_tunnel_speed = tunnel_speed_get();
-    snprintf(buffer[2], 21, "Current:   %04d mm/s", my_tunnel_speed);
-    si_lcd_write(LCD_LINE_3, buffer[2]);
-    update_display[2] = false;
+  if (update_display[3]) {
+    si_lcd_write(LCD_LINE_4, "System: Adjusting   ");
+    my_adjust_state = true;
+    my_adjust_time = millis();
+    update_display[3] = false;
+  }
+
+  if (((millis() - my_adjust_time) > STEADY_STATE_TIME) && my_adjust_state) {
+    my_adjust_state = false;
+    si_lcd_write(LCD_LINE_4, "System: Steady State");
   }
 }
 
@@ -130,13 +147,17 @@ void display_notification_send(display_notification_t notification) {
   switch (notification) {
   case DISPLAY_NOTIFICATION_TUNNEL_SETPOINT:
     my_tunnel_setpoint = tunnel_setpoint_get();
-    update_display[1] = true;
+    update_display[0] = true;
+    update_display[3] = true;
     break;
 
   case DISPLAY_NOTIFICATION_TUNNEL_SPEED:
     my_tunnel_speed = tunnel_speed_get();
-    update_display[2] = true;
+    update_display[1] = true;
     break;
+
+  case DISPLAY_NOTIFICATION_ADJUSTING:
+    update_display[3] = true;
 
   default:
 
